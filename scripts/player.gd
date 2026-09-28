@@ -30,6 +30,11 @@ var last_look_position := Vector2.ZERO
 var mobile_move_vector := Vector2.ZERO
 var mobile_joystick = null
 var mobile_actions: Dictionary = {}
+var first_person := false
+var camera_pivot_home_position := Vector3.ZERO
+var camera_arm_home_length := 0.0
+var weapon_home_scale := Vector3.ONE
+var first_person_arms: Node3D
 
 @onready var camera_pivot: Node3D = $CameraPivot
 @onready var camera_arm: SpringArm3D = $CameraPivot/SpringArm3D
@@ -39,17 +44,23 @@ var mobile_actions: Dictionary = {}
 @onready var player_model: Node3D = $PlayerModel
 @onready var weapon_view: Node3D = $PlayerModel/WeaponView
 var weapon_home_position := Vector3.ZERO
+var weapon_base_position := Vector3.ZERO
 
 func _ready() -> void:
     add_to_group("player")
     health = max_health
     weapon_home_position = weapon_view.position
+    weapon_base_position = weapon_home_position
+    weapon_home_scale = weapon_view.scale
+    camera_pivot_home_position = camera_pivot.position
+    camera_arm_home_length = camera_distance
     model_home_position = player_model.position
     camera_yaw = rotation.y
     camera_pivot.rotation.x = pitch
     camera_arm.position.x = camera_side_offset * shoulder_side
     camera_arm.spring_length = camera_distance
     camera_arm.add_excluded_object(get_rid())
+    _create_first_person_arms()
     mobile_joystick = get_tree().get_first_node_in_group("mobile_joystick")
     if not DisplayServer.is_touchscreen_available():
         Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -58,6 +69,78 @@ func _ready() -> void:
 
 func set_mobile_action(action: String, pressed: bool) -> void:
     mobile_actions[action] = pressed
+
+func toggle_camera_view() -> bool:
+    first_person = not first_person
+    if first_person:
+        player_model.visible = false
+        first_person_arms.visible = true
+        weapon_view.reparent(camera, false)
+        weapon_base_position = Vector3(0.28, -0.25, -0.58)
+        weapon_view.position = weapon_base_position
+        weapon_view.rotation = Vector3(-0.04, -0.08, -0.03)
+        weapon_view.scale = Vector3.ONE * 0.62
+        camera_pivot.position = Vector3(0, 1.58, 0.08)
+        camera_arm.position.x = 0.0
+        camera_arm.spring_length = 0.0
+        camera.fov = 76.0
+    else:
+        first_person_arms.visible = false
+        weapon_view.reparent(player_model, false)
+        weapon_base_position = weapon_home_position
+        weapon_view.position = weapon_base_position
+        weapon_view.rotation = Vector3.ZERO
+        weapon_view.scale = weapon_home_scale
+        player_model.visible = true
+        camera_pivot.position = camera_pivot_home_position
+        camera_arm.position.x = camera_side_offset * shoulder_side
+        camera_arm.spring_length = camera_arm_home_length
+        camera.fov = 68.0
+    return first_person
+
+func _create_first_person_arms() -> void:
+    first_person_arms = Node3D.new()
+    first_person_arms.name = "FirstPersonArms"
+    first_person_arms.visible = false
+    camera.add_child(first_person_arms)
+    var sleeve := _first_person_material(Color(0.30, 0.035, 0.045, 1.0))
+    var glove := _first_person_material(Color(0.13, 0.10, 0.09, 1.0))
+    _add_first_person_capsule("LeftSleeve", Vector3(-0.36, -0.49, -0.28), 0.105, 0.72, sleeve, Vector3(-1.12, 0, -0.36))
+    _add_first_person_capsule("RightSleeve", Vector3(0.38, -0.48, -0.30), 0.105, 0.72, sleeve, Vector3(-1.12, 0, 0.30))
+    _add_first_person_ellipsoid("LeftGlove", Vector3(-0.08, -0.32, -0.67), Vector3(0.11, 0.085, 0.14), glove)
+    _add_first_person_ellipsoid("RightGlove", Vector3(0.30, -0.34, -0.56), Vector3(0.095, 0.085, 0.14), glove)
+
+func _first_person_material(color: Color) -> StandardMaterial3D:
+    var material := StandardMaterial3D.new()
+    material.albedo_color = color
+    material.roughness = 0.86
+    return material
+
+func _add_first_person_capsule(part_name: String, part_position: Vector3, radius: float, height: float, material: Material, part_rotation: Vector3) -> void:
+    var mesh_instance := MeshInstance3D.new()
+    mesh_instance.name = part_name
+    var mesh := CapsuleMesh.new()
+    mesh.radius = radius
+    mesh.height = height
+    mesh.radial_segments = 16
+    mesh.rings = 8
+    mesh_instance.mesh = mesh
+    mesh_instance.material_override = material
+    mesh_instance.position = part_position
+    mesh_instance.rotation = part_rotation
+    first_person_arms.add_child(mesh_instance)
+
+func _add_first_person_ellipsoid(part_name: String, part_position: Vector3, part_scale: Vector3, material: Material) -> void:
+    var mesh_instance := MeshInstance3D.new()
+    mesh_instance.name = part_name
+    var mesh := SphereMesh.new()
+    mesh.radial_segments = 20
+    mesh.rings = 12
+    mesh_instance.mesh = mesh
+    mesh_instance.material_override = material
+    mesh_instance.position = part_position
+    mesh_instance.scale = part_scale
+    first_person_arms.add_child(mesh_instance)
 
 func _unhandled_input(event: InputEvent) -> void:
     if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -84,7 +167,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
     weapon_recoil = move_toward(weapon_recoil, 0.0, delta * 0.9)
     reload_animation = move_toward(reload_animation, 0.0, delta * 2.4)
-    weapon_view.position = weapon_home_position + Vector3(0, reload_animation * 0.08, weapon_recoil * 0.35)
+    weapon_view.position = weapon_base_position + Vector3(0, reload_animation * 0.08, weapon_recoil * 0.35)
     weapon_view.rotation.x = -0.02 - reload_animation * 0.55
     if not is_on_floor(): velocity.y -= gravity * delta
     if Input.is_action_just_pressed("jump") and is_on_floor(): velocity.y = jump_velocity
@@ -127,6 +210,9 @@ func _physics_process(delta: float) -> void:
         else:
             player_model.position.y = move_toward(player_model.position.y, model_home_position.y, delta * 0.18)
             player_model.rotation.z = move_toward(player_model.rotation.z, 0.0, delta * 0.15)
+    if first_person:
+        var bob := sin(walk_time * 2.0) * 0.018 if movement_amount > 0.15 else 0.0
+        camera_pivot.position = Vector3(0, 1.58 + bob, 0.08)
 
 func swap_camera_shoulder() -> void:
     shoulder_side *= -1.0

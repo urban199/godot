@@ -15,10 +15,12 @@ func _ready() -> void:
     _style_round($Reload, Color(0.12, 0.34, 0.68, 0.9))
     _style_round($Flashlight, Color(0.72, 0.42, 0.08, 0.9))
     _style_round($Shoulder, Color(0.34, 0.18, 0.62, 0.9))
+    _style_round($View, Color(0.18, 0.34, 0.34, 0.92))
     $Fire.pressed.connect(_one_shot.bind("fire"))
     $Reload.pressed.connect(_one_shot.bind("reload"))
     $Flashlight.pressed.connect(_one_shot.bind("flashlight"))
     $Shoulder.pressed.connect(_one_shot.bind("shoulder_swap"))
+    $View.pressed.connect(_toggle_view)
 
 func _style_round(button: Button, color: Color) -> void:
     var normal := StyleBoxFlat.new()
@@ -61,3 +63,9 @@ func _one_shot(action: String) -> void:
     Input.action_press(action)
     await get_tree().process_frame
     Input.action_release(action)
+
+func _toggle_view() -> void:
+    var player := get_tree().get_first_node_in_group("player")
+    if player:
+        var is_first_person: bool = player.call("toggle_camera_view")
+        $View.text = "3RD" if is_first_person else "1ST"

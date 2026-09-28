@@ -103,7 +103,65 @@ func _build_city_district() -> void:
 
         _add_window_strip(body, sizes[index], index)
 
+    _add_expanded_city()
     _add_city_detail()
+
+func _add_expanded_city() -> void:
+    var palette := [
+        Color(0.105, 0.13, 0.17, 1.0), Color(0.19, 0.12, 0.13, 1.0),
+        Color(0.12, 0.17, 0.16, 1.0), Color(0.22, 0.18, 0.13, 1.0),
+        Color(0.14, 0.13, 0.20, 1.0)
+    ]
+    var roof_material := _make_material(Color(0.045, 0.05, 0.065, 1.0), 0.96)
+    var trim_material := _make_material(Color(0.065, 0.07, 0.08, 1.0), 0.88)
+
+    # A connected road grid continues beyond the original compact encounter block.
+    var asphalt := _make_material(Color(0.035, 0.04, 0.047, 1.0), 0.98)
+    for x in [-140, -110, -80, 80, 110, 140]:
+        _add_box_prop("OuterStreet_NS_%d" % x, Vector3(x, 0.018, 0), Vector3(7.5, 0.06, 270), asphalt)
+    for z in [-105, -75, 75, 105]:
+        _add_box_prop("OuterStreet_EW_%d" % z, Vector3(0, 0.02, z), Vector3(360, 0.06, 7.5), asphalt)
+
+    var x_centers := [-155, -125, -95, -65, 65, 95, 125, 155]
+    var z_centers := [-120, -90, -60, 60, 90, 120]
+    var building_index := 0
+    for x_index in range(x_centers.size()):
+        for z_index in range(z_centers.size()):
+            var width := 18.0 + float((x_index * 3 + z_index) % 3) * 1.5
+            var depth := 17.0 + float((x_index + z_index * 2) % 3)
+            var height := 10.0 + float((x_index * 5 + z_index * 3) % 7)
+            var size := Vector3(width, height, depth)
+            var center := Vector3(x_centers[x_index], height * 0.5, z_centers[z_index])
+            var building := StaticBody3D.new()
+            building.name = "OuterCityBuilding_%02d" % building_index
+            building.position = center
+
+            var facade := MeshInstance3D.new()
+            var facade_mesh := BoxMesh.new()
+            facade_mesh.size = size
+            facade_mesh.material = _make_material(palette[building_index % palette.size()], 0.94)
+            facade.mesh = facade_mesh
+            building.add_child(facade)
+            _add_child_box(building, "FlatRoof", Vector3(width + 0.45, 0.32, depth + 0.45), Vector3(0, height * 0.5 + 0.16, 0), roof_material)
+            _add_child_box(building, "ConcreteTrim", Vector3(width + 0.08, 0.18, 0.12), Vector3(0, -height * 0.12, -depth * 0.5 - 0.07), trim_material)
+
+            var collision := CollisionShape3D.new()
+            var shape := BoxShape3D.new()
+            shape.size = size
+            collision.shape = shape
+            building.add_child(collision)
+            add_child(building)
+            _add_window_strip(building, size, building_index + 1)
+            building_index += 1
+
+    # Sparse, weak street lamps and abandoned cars extend the horror atmosphere into the outskirts.
+    for i in range(8):
+        var z := -112 + i * 32
+        _add_street_light("OuterLamp_W_%02d" % i, Vector3(-76, 0, z))
+        _add_street_light("OuterLamp_E_%02d" % i, Vector3(76, 0, z))
+    var wreck_positions := [Vector3(-72, 0.45, -84), Vector3(72, 0.45, -48), Vector3(-72, 0.45, 84), Vector3(72, 0.45, 108)]
+    for i in range(wreck_positions.size()):
+        _add_abandoned_car("OuterWreck_%02d" % i, wreck_positions[i], _make_material(Color(0.16, 0.055, 0.045, 1.0), 0.9), i % 2 == 0)
 
 func _add_window_strip(parent: Node3D, size: Vector3, index: int) -> void:
     var window_material := StandardMaterial3D.new()
@@ -131,10 +189,10 @@ func _add_city_detail() -> void:
     var car_blue := _make_material(Color(0.04, 0.12, 0.34, 1.0), 0.68)
     var wood := _make_material(Color(0.28, 0.15, 0.07, 1.0), 0.86)
 
-    _add_box_prop("MainRoad_NS", Vector3(0, 0.02, 0), Vector3(13.5, 0.08, 88), asphalt)
-    _add_box_prop("MainRoad_EW", Vector3(0, 0.03, 0), Vector3(118, 0.08, 13.5), asphalt)
-    _add_box_prop("NorthRoad", Vector3(0, 0.025, -28), Vector3(116, 0.08, 8), asphalt)
-    _add_box_prop("SouthRoad", Vector3(0, 0.025, 28), Vector3(116, 0.08, 8), asphalt)
+    _add_box_prop("MainRoad_NS", Vector3(0, 0.02, 0), Vector3(13.5, 0.08, 270), asphalt)
+    _add_box_prop("MainRoad_EW", Vector3(0, 0.03, 0), Vector3(360, 0.08, 13.5), asphalt)
+    _add_box_prop("NorthRoad", Vector3(0, 0.025, -28), Vector3(360, 0.08, 8), asphalt)
+    _add_box_prop("SouthRoad", Vector3(0, 0.025, 28), Vector3(360, 0.08, 8), asphalt)
     _add_box_prop("WestRoad", Vector3(-40, 0.025, 0), Vector3(8, 0.08, 86), asphalt)
     _add_box_prop("EastRoad", Vector3(40, 0.025, 0), Vector3(8, 0.08, 86), asphalt)
 

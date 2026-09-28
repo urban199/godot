@@ -14,33 +14,33 @@ background_mode = 1
 background_color = Color(0.025, 0.04, 0.08, 1)
 ambient_light_source = 3
 ambient_light_color = Color(0.32, 0.38, 0.58, 1)
-ambient_light_energy = 1.2
+ambient_light_energy = 0.48
 fog_enabled = true
 fog_light_color = Color(0.18, 0.22, 0.38, 1)
-fog_density = 0.004
+fog_density = 0.008
 
 [sub_resource type="StandardMaterial3D" id="Floor_material"]
 albedo_color = Color(0.16, 0.18, 0.22, 1)
 roughness = 0.92
 [sub_resource type="BoxMesh" id="Floor_mesh"]
-size = Vector3(120, 0.2, 90)
+size = Vector3(360, 0.2, 270)
 material = SubResource("Floor_material")
 [sub_resource type="BoxShape3D" id="Floor_shape"]
-size = Vector3(120, 0.2, 90)
+size = Vector3(360, 0.2, 270)
 
 [sub_resource type="StandardMaterial3D" id="Wall_material"]
 albedo_color = Color(0.18, 0.17, 0.2, 1)
 roughness = 0.8
 [sub_resource type="BoxMesh" id="Wall_long_mesh"]
-size = Vector3(120, 3.2, 0.35)
+size = Vector3(360, 3.2, 0.35)
 material = SubResource("Wall_material")
 [sub_resource type="BoxMesh" id="Wall_side_mesh"]
-size = Vector3(0.35, 3.2, 90)
+size = Vector3(0.35, 3.2, 270)
 material = SubResource("Wall_material")
 [sub_resource type="BoxShape3D" id="Wall_long_shape"]
-size = Vector3(120, 3.2, 0.35)
+size = Vector3(360, 3.2, 0.35)
 [sub_resource type="BoxShape3D" id="Wall_side_shape"]
-size = Vector3(0.35, 3.2, 90)
+size = Vector3(0.35, 3.2, 270)
 
 [sub_resource type="StandardMaterial3D" id="Player_material"]
 albedo_color = Color(0.2, 0.5, 0.78, 1)
@@ -113,33 +113,33 @@ environment = SubResource("Environment_main")
 [node name="MoonLight" type="DirectionalLight3D" parent="."]
 rotation_degrees = Vector3(-55, -25, 0)
 light_color = Color(0.35, 0.45, 0.8, 1)
-light_energy = 1.05
+light_energy = 0.58
 shadow_enabled = true
 [node name="FlickerLight" type="OmniLight3D" parent="."]
 position = Vector3(0, 3, 0)
 omni_range = 14.0
 light_color = Color(0.45, 0.55, 1, 1)
-light_energy = 3.0
+light_energy = 1.1
 [node name="RedCityLight" type="OmniLight3D" parent="."]
 position = Vector3(-22, 4.5, -16)
 omni_range = 20.0
 light_color = Color(1, 0.12, 0.08, 1)
-light_energy = 5.5
+light_energy = 2.4
 [node name="CyanCityLight" type="OmniLight3D" parent="."]
 position = Vector3(22, 4.5, -16)
 omni_range = 20.0
 light_color = Color(0.05, 0.55, 1, 1)
-light_energy = 5.5
+light_energy = 2.0
 [node name="AmberCityLight" type="OmniLight3D" parent="."]
 position = Vector3(0, 4.0, 20)
 omni_range = 22.0
 light_color = Color(1, 0.42, 0.08, 1)
-light_energy = 5.0
+light_energy = 2.1
 [node name="PurpleCityLight" type="OmniLight3D" parent="."]
 position = Vector3(-26, 4.0, 10)
 omni_range = 18.0
 light_color = Color(0.62, 0.12, 1, 1)
-light_energy = 4.5
+light_energy = 1.8
 
 [node name="FloorBody" type="StaticBody3D" parent="."]
 [node name="Floor" type="MeshInstance3D" parent="FloorBody"]
@@ -150,25 +150,25 @@ position = Vector3(0, -0.1, 0)
 shape = SubResource("Floor_shape")
 
 [node name="NorthWall" type="StaticBody3D" parent="."]
-position = Vector3(0, 1.6, -45)
+position = Vector3(0, 1.6, -135)
 [node name="Mesh" type="MeshInstance3D" parent="NorthWall"]
 mesh = SubResource("Wall_long_mesh")
 [node name="Collision" type="CollisionShape3D" parent="NorthWall"]
 shape = SubResource("Wall_long_shape")
 [node name="SouthWall" type="StaticBody3D" parent="."]
-position = Vector3(0, 1.6, 45)
+position = Vector3(0, 1.6, 135)
 [node name="Mesh" type="MeshInstance3D" parent="SouthWall"]
 mesh = SubResource("Wall_long_mesh")
 [node name="Collision" type="CollisionShape3D" parent="SouthWall"]
 shape = SubResource("Wall_long_shape")
 [node name="WestWall" type="StaticBody3D" parent="."]
-position = Vector3(-60, 1.6, 0)
+position = Vector3(-180, 1.6, 0)
 [node name="Mesh" type="MeshInstance3D" parent="WestWall"]
 mesh = SubResource("Wall_side_mesh")
 [node name="Collision" type="CollisionShape3D" parent="WestWall"]
 shape = SubResource("Wall_side_shape")
 [node name="EastWall" type="StaticBody3D" parent="."]
-position = Vector3(60, 1.6, 0)
+position = Vector3(180, 1.6, 0)
 [node name="Mesh" type="MeshInstance3D" parent="EastWall"]
 mesh = SubResource("Wall_side_mesh")
 [node name="Collision" type="CollisionShape3D" parent="EastWall"]
@@ -218,9 +218,9 @@ fov = 68.0
 current = true
 [node name="Flashlight" type="SpotLight3D" parent="Player/CameraPivot/SpringArm3D/Camera3D"]
 position = Vector3(0, 0, -0.3)
-spot_range = 16.0
-spot_angle = 28.0
-light_energy = 7.0
+spot_range = 24.0
+spot_angle = 30.0
+light_energy = 8.5
 shadow_enabled = true
 
 [node name="ZombieA" type="CharacterBody3D" parent="."]
@@ -275,7 +275,7 @@ mesh = SubResource("Pickup_mesh")
 shape = SubResource("Pickup_shape")
 
 [node name="ExitDoor" type="MeshInstance3D" parent="."]
-position = Vector3(0, 1.5, -27.7)
+position = Vector3(0, 1.5, -124)
 mesh = SubResource("Door_mesh")
 
 [node name="HUD" type="CanvasLayer" parent="."]
@@ -396,6 +396,15 @@ offset_bottom = 670.0
 theme_override_font_sizes/font_size = 15
 text = "SIDE"
 tooltip_text = "Swap camera shoulder"
+
+[node name="View" type="Button" parent="TouchControls"]
+offset_left = 1038.0
+offset_top = 574.0
+offset_right = 1134.0
+offset_bottom = 670.0
+theme_override_font_sizes/font_size = 16
+text = "1ST"
+tooltip_text = "Switch to first-person / third-person view"
 
 [node name="Fire" type="Button" parent="TouchControls"]
 offset_left = 1138.0
