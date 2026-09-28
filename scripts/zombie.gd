@@ -7,6 +7,7 @@ var health := 70
 var attack_cooldown := 0.0
 var target: Node3D
 var limp_time := 0.0
+var defeated := false
 @onready var enemy_model: Node3D = $EnemyModel
 
 func _ready() -> void:
@@ -25,10 +26,7 @@ func _physics_process(delta: float) -> void:
         enemy_model.call("set_moving", true)
         velocity = offset.normalized() * move_speed
         look_at(global_position + Vector3(offset.x, 0, offset.z), Vector3.UP)
-        var position_before_slide := global_position
         move_and_slide()
-        if global_position.distance_to(position_before_slide) < 0.001:
-            global_position += offset.normalized() * move_speed * delta
         limp_time += delta * 6.0
         enemy_model.position.y = sin(limp_time) * 0.06
         enemy_model.rotation.z = sin(limp_time * 0.7) * 0.08
@@ -42,7 +40,17 @@ func _physics_process(delta: float) -> void:
             target.take_damage(attack_damage)
 
 func take_damage(amount: int) -> void:
+    if defeated:
+        return
     health -= amount
     if health <= 0:
+        defeated = true
+        set_physics_process(false)
         get_tree().call_group("game", "enemy_defeated")
-        queue_free()
+        _play_death_and_remove()
+
+func _play_death_and_remove() -> void:
+    var animation_duration := float(enemy_model.call("play_action", "die", false))
+    if animation_duration > 0.0:
+        await get_tree().create_timer(animation_duration).timeout
+    queue_free()

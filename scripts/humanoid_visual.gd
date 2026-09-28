@@ -2,8 +2,17 @@ extends Node3D
 
 @export_enum("survivor", "zombie") var role := "survivor"
 
+const SURVIVOR_SCENE: PackedScene = preload("res://assets/characters/kenney_blocky/Models/GLB format/character-a.glb")
+const ZOMBIE_SCENE: PackedScene = preload("res://assets/characters/kenney_blocky/Models/GLB format/character-b.glb")
+
 var moving := false
+var sprinting := false
 var animation_time := 0.0
+var imported_model: Node3D
+var animation_player: AnimationPlayer
+var current_locomotion: StringName = &""
+var active_action: StringName = &""
+var resume_locomotion_after_action := true
 var left_arm: Node3D
 var right_arm: Node3D
 var left_leg: Node3D
@@ -12,10 +21,77 @@ var torso: MeshInstance3D
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
+    _build_imported_humanoid()
+    if imported_model:
+        return
     _build_humanoid()
 
-func set_moving(value: bool) -> void:
+func _build_imported_humanoid() -> void:
+    var model_scene := SURVIVOR_SCENE if role == "survivor" else ZOMBIE_SCENE
+    imported_model = model_scene.instantiate() as Node3D
+    if not imported_model:
+        return
+    imported_model.position.y = -1.0 if role == "zombie" else -0.8
+    add_child(imported_model)
+
+    var animation_nodes := imported_model.find_children("*", "AnimationPlayer", true, false)
+    if animation_nodes.is_empty():
+        return
+    animation_player = animation_nodes[0] as AnimationPlayer
+    if not animation_player:
+        return
+    animation_player.playback_default_blend_time = 0.18
+    animation_player.animation_finished.connect(_on_animation_finished)
+    _play_locomotion()
+
+func set_moving(value: bool, is_sprinting := false) -> void:
+    if moving == value and sprinting == is_sprinting:
+        return
     moving = value
+    sprinting = is_sprinting
+    if animation_player and active_action == &"":
+        _play_locomotion()
+
+func uses_imported_model() -> bool:
+    return imported_model != null
+
+func play_action(animation_name: StringName, return_to_locomotion := true) -> float:
+    if not animation_player or not animation_player.has_animation(animation_name):
+        return 0.0
+    var animation: Animation = animation_player.get_animation(animation_name)
+    active_action = animation_name
+    resume_locomotion_after_action = return_to_locomotion
+    animation_player.play(animation_name, 0.08)
+    return animation.length
+
+func _play_locomotion() -> void:
+    var animation_name: StringName = &"idle"
+    if role == "survivor":
+        animation_name = &"walk" if moving else &"holding-both"
+        if moving and sprinting:
+            animation_name = &"sprint"
+    elif moving:
+        animation_name = &"walk"
+
+    if not animation_player.has_animation(animation_name):
+        animation_name = &"idle"
+    if not animation_player.has_animation(animation_name):
+        return
+    if current_locomotion == animation_name and animation_player.current_animation == animation_name:
+        return
+
+    var animation: Animation = animation_player.get_animation(animation_name)
+    animation.loop_mode = Animation.LOOP_LINEAR
+    current_locomotion = animation_name
+    animation_player.play(animation_name, 0.18)
+
+func _on_animation_finished(animation_name: StringName) -> void:
+    if animation_name != active_action:
+        return
+    active_action = &""
+    if resume_locomotion_after_action:
+        current_locomotion = &""
+        _play_locomotion()
 
 func _material(color: Color, roughness := 0.7) -> StandardMaterial3D:
     var material := StandardMaterial3D.new()
@@ -82,6 +158,8 @@ func _build_humanoid() -> void:
     _capsule(0.14, 0.28, Vector3(0, -0.70, -0.08), boots, right_leg)
 
 func _process(delta: float) -> void:
+    if imported_model:
+        return
     animation_time += delta * (7.0 if moving else 1.8)
     var stride := 0.42 if moving else 0.035
     left_leg.rotation.x = sin(animation_time) * stride

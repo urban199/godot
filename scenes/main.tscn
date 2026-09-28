@@ -181,37 +181,40 @@ groups = ["player"]
 mesh = SubResource("Player_mesh")
 visible = false
 [node name="PlayerModel" type="Node3D" parent="Player"]
-visible = false
 script = ExtResource("6_humanoid")
 role = "survivor"
 position = Vector3(0, -0.28, 0)
 scale = Vector3(0.9, 0.9, 0.9)
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
-shape = SubResource("Player_shape")
-[node name="Muzzle" type="Marker3D" parent="Player"]
-position = Vector3(0, 0.2, -0.7)
-[node name="CameraPivot" type="Node3D" parent="Player"]
-position = Vector3(0, 1.65, 0.08)
-
-[node name="Camera3D" type="Camera3D" parent="Player/CameraPivot"]
-position = Vector3(0, 0, 0)
-current = true
-
-[node name="WeaponView" type="Node3D" parent="Player/CameraPivot/Camera3D"]
-position = Vector3(0.58, -0.43, -0.92)
-rotation_degrees = Vector3(-2, -3, 0)
-[node name="Slide" type="MeshInstance3D" parent="Player/CameraPivot/Camera3D/WeaponView"]
+[node name="Muzzle" type="Marker3D" parent="Player/PlayerModel"]
+position = Vector3(-0.28, 1.12, -0.52)
+[node name="WeaponView" type="Node3D" parent="Player/PlayerModel"]
+position = Vector3(-0.28, 1.05, -0.25)
+scale = Vector3(0.45, 0.45, 0.45)
+[node name="Slide" type="MeshInstance3D" parent="Player/PlayerModel/WeaponView"]
 position = Vector3(0, 0.08, 0)
 mesh = SubResource("Weapon_slide_mesh")
-[node name="Grip" type="MeshInstance3D" parent="Player/CameraPivot/Camera3D/WeaponView"]
+[node name="Grip" type="MeshInstance3D" parent="Player/PlayerModel/WeaponView"]
 position = Vector3(0, -0.18, 0.13)
 rotation_degrees = Vector3(-10, 0, 0)
 mesh = SubResource("Weapon_grip_mesh")
-[node name="Barrel" type="MeshInstance3D" parent="Player/CameraPivot/Camera3D/WeaponView"]
+[node name="Barrel" type="MeshInstance3D" parent="Player/PlayerModel/WeaponView"]
 position = Vector3(0, 0.08, -0.43)
 rotation_degrees = Vector3(90, 0, 0)
 mesh = SubResource("Weapon_barrel_mesh")
-[node name="Flashlight" type="SpotLight3D" parent="Player/CameraPivot/Camera3D"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+shape = SubResource("Player_shape")
+[node name="CameraPivot" type="Node3D" parent="Player"]
+position = Vector3(0, 1.45, 0.08)
+[node name="SpringArm3D" type="SpringArm3D" parent="Player/CameraPivot"]
+position = Vector3(0.42, 0, 0)
+spring_length = 3.6
+margin = 0.18
+collision_mask = 1
+[node name="Camera3D" type="Camera3D" parent="Player/CameraPivot/SpringArm3D"]
+position = Vector3(0, 0, 0)
+fov = 68.0
+current = true
+[node name="Flashlight" type="SpotLight3D" parent="Player/CameraPivot/SpringArm3D/Camera3D"]
 position = Vector3(0, 0, -0.3)
 spot_range = 16.0
 spot_angle = 28.0
@@ -311,6 +314,21 @@ offset_bottom = 380.0
 theme_override_colors/font_color = Color(1, 0.75, 0.65, 1)
 theme_override_font_sizes/font_size = 28
 horizontal_alignment = 1
+[node name="Crosshair" type="Label" parent="HUD"]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -12.0
+offset_top = -18.0
+offset_right = 12.0
+offset_bottom = 18.0
+theme_override_colors/font_color = Color(0.9, 0.92, 0.86, 0.85)
+theme_override_font_sizes/font_size = 25
+horizontal_alignment = 1
+vertical_alignment = 1
+text = "+"
+mouse_filter = 2
 [node name="TouchControls" type="CanvasLayer" parent="."]
 script = ExtResource("5_touch")
 
@@ -375,7 +393,7 @@ offset_right = 1016.0
 offset_bottom = 670.0
 theme_override_font_sizes/font_size = 15
 text = "SIDE"
-tooltip_text = "Swap first-person camera side"
+tooltip_text = "Swap camera shoulder"
 
 [node name="Fire" type="Button" parent="TouchControls"]
 offset_left = 1138.0
