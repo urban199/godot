@@ -134,25 +134,27 @@ func _cylinder(top: float, bottom: float, height: float, position: Vector3, mate
 func _build_survivor() -> void:
 	var skin := _toon(Color(0.98, 0.78, 0.72), 0.82)
 	var skin_shadow := _toon(Color(0.72, 0.40, 0.43), 0.9)
-	var hair := _toon(Color(0.10, 0.48, 0.82), 0.34, 0.08)
-	var hair_shadow := _toon(Color(0.035, 0.16, 0.40), 0.42)
-	var hair_light := _toon(Color(0.40, 0.82, 1.0), 0.28, 0.12)
-	var coat := _toon(Color(0.80, 0.86, 0.94), 0.78)
-	var coat_shadow := _toon(Color(0.31, 0.40, 0.57), 0.82)
-	var navy := _toon(Color(0.055, 0.10, 0.23), 0.62)
+	var hair := _toon(Color(0.035, 0.032, 0.045), 0.42, 0.02)
+	var hair_shadow := _toon(Color(0.12, 0.11, 0.14), 0.48)
+	var hair_light := _toon(Color(0.28, 0.27, 0.31), 0.38)
+	var coat := _toon(Color(0.78, 0.045, 0.075), 0.72)
+	var coat_shadow := _toon(Color(0.91, 0.88, 0.82), 0.88)
+	var dress_red := _toon(Color(0.68, 0.025, 0.045), 0.76)
+	var belt := _toon(Color(0.075, 0.07, 0.075), 0.56, 0.08)
+	var navy := _toon(Color(0.12, 0.105, 0.12), 0.72)
 	var gold := _toon(Color(0.88, 0.61, 0.19), 0.3, 0.58)
-	var red := _toon(Color(0.68, 0.045, 0.10), 0.42)
+	var red := _toon(Color(0.48, 0.018, 0.035), 0.48)
 	var eye_white := _toon(Color(1.0, 0.96, 0.91), 0.3)
-	var iris := _toon(Color(0.82, 0.10, 0.17), 0.27)
+	var iris := _toon(Color(0.34, 0.16, 0.075), 0.27)
 	var pupil := _toon(Color(0.12, 0.025, 0.055), 0.25)
-	var boot := _toon(Color(0.045, 0.07, 0.13), 0.36, 0.12)
+	var boot := _toon(Color(0.035, 0.04, 0.05), 0.38, 0.12)
 
-	# Long ice-blue hair, broad anime fringe and separated back locks.
+	# Original anime face, shoulder-length black hair and Santa-inspired cap.
 	_ellipsoid(Vector3(0, 1.72, 0), Vector3(0.56, 0.60, 0.47), skin, visual_root)
 	_ellipsoid(Vector3(0, 1.99, 0.06), Vector3(0.64, 0.32, 0.55), hair, visual_root)
 	for i in range(5):
 		var x := (float(i) - 2.0) * 0.19
-		var lock := _capsule(0.105 if i % 2 == 0 else 0.085, 1.18 - absf(x) * 0.35, Vector3(x, 1.05, 0.17 + absf(x) * 0.12), hair if i % 2 == 0 else hair_shadow, visual_root)
+		var lock := _capsule(0.105 if i % 2 == 0 else 0.085, 0.90 - absf(x) * 0.22, Vector3(x, 1.34, 0.17 + absf(x) * 0.12), hair if i % 2 == 0 else hair_shadow, visual_root)
 		lock.rotation.z = x * 0.42
 	for i in range(3):
 		var x := (float(i) - 1.0) * 0.17
@@ -160,6 +162,11 @@ func _build_survivor() -> void:
 		bang.rotation.z = -x * 1.1
 	_ellipsoid(Vector3(-0.31, 1.58, -0.015), Vector3(0.13, 0.36, 0.15), hair, visual_root)
 	_ellipsoid(Vector3(0.31, 1.58, -0.015), Vector3(0.13, 0.36, 0.15), hair_shadow, visual_root)
+	var santa_band := _cylinder(0.28, 0.31, 0.12, Vector3(0, 2.04, 0.035), coat_shadow, visual_root)
+	santa_band.rotation.z = 0.10
+	var santa_cap := _cylinder(0.0, 0.235, 0.47, Vector3(0.08, 2.27, 0.04), coat, visual_root)
+	santa_cap.rotation.z = 0.32
+	_ellipsoid(Vector3(0.24, 2.48, 0.04), Vector3(0.16, 0.16, 0.16), coat_shadow, visual_root)
 
 	# Face: red eyes, bright catchlights, lashes and small mouth.
 	for side in [-1.0, 1.0]:
@@ -170,17 +177,19 @@ func _build_survivor() -> void:
 		_box(Vector3(0.17, 0.025, 0.025), Vector3(side * 0.125, 1.835, -0.28), hair_shadow, visual_root, Vector3(0, 0, side * -0.12))
 	_box(Vector3(0.09, 0.018, 0.018), Vector3(0, 1.62, -0.285), skin_shadow, visual_root)
 
-	# High-collar officer coat, dark skirt, gold piping and a red neck ribbon.
+	# Festive red dress with soft white trim and a dark waist belt.
 	_capsule(0.31, 0.78, Vector3(0, 1.03, 0), coat, visual_root)
-	_box(Vector3(0.17, 0.78, 0.11), Vector3(-0.145, 0.98, -0.255), coat_shadow, visual_root, Vector3(0, 0, -0.12))
-	_box(Vector3(0.17, 0.78, 0.11), Vector3(0.145, 0.98, -0.255), coat_shadow, visual_root, Vector3(0, 0, 0.12))
-	_cylinder(0.24, 0.43, 0.48, Vector3(0, 0.61, 0), navy, visual_root)
-	_box(Vector3(0.54, 0.055, 0.38), Vector3(0, 0.78, -0.02), gold, visual_root)
+	_box(Vector3(0.17, 0.78, 0.11), Vector3(-0.145, 0.98, -0.255), dress_red, visual_root, Vector3(0, 0, -0.12))
+	_box(Vector3(0.17, 0.78, 0.11), Vector3(0.145, 0.98, -0.255), dress_red, visual_root, Vector3(0, 0, 0.12))
+	_cylinder(0.24, 0.43, 0.48, Vector3(0, 0.61, 0), dress_red, visual_root)
+	_cylinder(0.43, 0.48, 0.11, Vector3(0, 0.405, 0), coat_shadow, visual_root)
+	_box(Vector3(0.54, 0.075, 0.38), Vector3(0, 0.78, -0.02), belt, visual_root)
+	_box(Vector3(0.13, 0.13, 0.035), Vector3(0, 0.78, -0.225), gold, visual_root)
 	_box(Vector3(0.11, 0.22, 0.07), Vector3(0, 1.37, -0.29), red, visual_root)
-	_box(Vector3(0.10, 0.14, 0.08), Vector3(0, 1.24, -0.30), gold, visual_root)
-	_capsule(0.16, 0.24, Vector3(0, 1.46, 0), coat, visual_root)
+	_box(Vector3(0.10, 0.14, 0.08), Vector3(0, 1.24, -0.30), coat_shadow, visual_root)
+	_capsule(0.16, 0.24, Vector3(0, 1.46, 0), coat_shadow, visual_root)
 	for y in [1.10, 0.96, 0.82]:
-		_ellipsoid(Vector3(0, y, -0.31), Vector3(0.055, 0.055, 0.035), gold, visual_root)
+		_ellipsoid(Vector3(0, y, -0.31), Vector3(0.055, 0.055, 0.035), coat_shadow, visual_root)
 	for side in [-1.0, 1.0]:
 		_box(Vector3(0.18, 0.12, 0.30), Vector3(side * 0.34, 1.29, 0), coat_shadow, visual_root)
 		_box(Vector3(0.13, 0.16, 0.035), Vector3(side * 0.22, 0.88, -0.23), gold, visual_root)
@@ -202,12 +211,14 @@ func _build_survivor() -> void:
 	left_leg.position = Vector3(-0.15, 0.48, 0)
 	visual_root.add_child(left_leg)
 	_capsule(0.12, 0.57, Vector3(0, -0.29, 0), navy, left_leg)
+	_capsule(0.145, 0.72, Vector3(0, -0.49, -0.015), boot, left_leg)
 	_capsule(0.145, 0.43, Vector3(0, -0.74, -0.045), boot, left_leg)
 	_box(Vector3(0.24, 0.13, 0.34), Vector3(0, -0.91, -0.12), boot, left_leg)
 	right_leg = Node3D.new()
 	right_leg.position = Vector3(0.15, 0.48, 0)
 	visual_root.add_child(right_leg)
 	_capsule(0.12, 0.57, Vector3(0, -0.29, 0), navy, right_leg)
+	_capsule(0.145, 0.72, Vector3(0, -0.49, -0.015), boot, right_leg)
 	_capsule(0.145, 0.43, Vector3(0, -0.74, -0.045), boot, right_leg)
 	_box(Vector3(0.24, 0.13, 0.34), Vector3(0, -0.91, -0.12), boot, right_leg)
 

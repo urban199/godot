@@ -100,6 +100,14 @@ jobs:
           cp godot-templates/templates/* \
             "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
 
+      - name: Install Android Gradle build template
+        shell: bash
+        run: |
+          ./Godot_v${GODOT_VERSION}-stable_linux.x86_64 \
+            --headless \
+            --path . \
+            --install-android-build-template
+
       - name: Configure Godot Android paths
         shell: bash
         run: |
