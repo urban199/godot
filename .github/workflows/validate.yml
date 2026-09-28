@@ -1,0 +1,27 @@
+name: Validate Godot Project
+
+on:
+  push:
+  pull_request:
+
+env:
+  GODOT_VERSION: 4.5.1
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download pinned Godot
+        shell: bash
+        run: |
+          curl --fail --location --output godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot
+          chmod +x godot
+
+      - name: Validate project
+        run: ./godot --headless --path . --editor --quit

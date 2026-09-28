@@ -1,0 +1,30 @@
+[application]
+config/name="Neko Nightfall"
+run/main_scene="res://scenes/main.tscn"
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/handheld/orientation=4
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.008, 0.012, 0.02, 1)
+
+[input]
+move_forward={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":87)]}
+move_backward={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":83)]}
+move_left={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":65)]}
+move_right={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":68)]}
+jump={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":32)]}
+sprint={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":4194325)]}
+shoulder_swap={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":67)]}
+fire={"deadzone":0.5,"events":[Object(InputEventMouseButton,"button_index":1)]}
+reload={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":82)]}
+flashlight={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":70)]}
+interact={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":69)]}

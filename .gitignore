@@ -1,0 +1,6 @@
+backend/data.json
+backend/data.json.tmp
+backend/github-private-key.pem
+.env
+AI_RESPONSE.txt
+*.log

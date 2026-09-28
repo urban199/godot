@@ -1,0 +1,397 @@
+[gd_scene load_steps=32 format=3]
+
+[ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scripts/player.gd" id="2_player"]
+[ext_resource type="Script" path="res://scripts/zombie.gd" id="3_zombie"]
+[ext_resource type="Script" path="res://scripts/pickup.gd" id="4_pickup"]
+[ext_resource type="Script" path="res://scripts/touch_controls.gd" id="5_touch"]
+[ext_resource type="Script" path="res://scripts/humanoid_visual.gd" id="6_humanoid"]
+[ext_resource type="Script" path="res://scripts/virtual_joystick.gd" id="7_joystick"]
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 1
+background_color = Color(0.025, 0.04, 0.08, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.32, 0.38, 0.58, 1)
+ambient_light_energy = 1.2
+fog_enabled = true
+fog_light_color = Color(0.18, 0.22, 0.38, 1)
+fog_density = 0.004
+
+[sub_resource type="StandardMaterial3D" id="Floor_material"]
+albedo_color = Color(0.16, 0.18, 0.22, 1)
+roughness = 0.92
+[sub_resource type="BoxMesh" id="Floor_mesh"]
+size = Vector3(120, 0.2, 90)
+material = SubResource("Floor_material")
+[sub_resource type="BoxShape3D" id="Floor_shape"]
+size = Vector3(120, 0.2, 90)
+
+[sub_resource type="StandardMaterial3D" id="Wall_material"]
+albedo_color = Color(0.18, 0.17, 0.2, 1)
+roughness = 0.8
+[sub_resource type="BoxMesh" id="Wall_long_mesh"]
+size = Vector3(120, 3.2, 0.35)
+material = SubResource("Wall_material")
+[sub_resource type="BoxMesh" id="Wall_side_mesh"]
+size = Vector3(0.35, 3.2, 90)
+material = SubResource("Wall_material")
+[sub_resource type="BoxShape3D" id="Wall_long_shape"]
+size = Vector3(120, 3.2, 0.35)
+[sub_resource type="BoxShape3D" id="Wall_side_shape"]
+size = Vector3(0.35, 3.2, 90)
+
+[sub_resource type="StandardMaterial3D" id="Player_material"]
+albedo_color = Color(0.2, 0.5, 0.78, 1)
+roughness = 0.4
+[sub_resource type="CapsuleMesh" id="Player_mesh"]
+radius = 0.48
+height = 1.7
+material = SubResource("Player_material")
+[sub_resource type="CapsuleShape3D" id="Player_shape"]
+radius = 0.48
+height = 1.7
+
+[sub_resource type="StandardMaterial3D" id="Zombie_material"]
+albedo_color = Color(0.35, 0.16, 0.16, 1)
+roughness = 0.75
+[sub_resource type="CapsuleMesh" id="Zombie_mesh"]
+radius = 0.52
+height = 1.8
+material = SubResource("Zombie_material")
+[sub_resource type="CapsuleShape3D" id="Zombie_shape"]
+radius = 0.52
+height = 1.8
+
+[sub_resource type="StandardMaterial3D" id="Blue_material"]
+albedo_color = Color(0.03, 0.12, 0.28, 1)
+emission_enabled = true
+emission = Color(0.02, 0.18, 0.8, 1)
+emission_energy_multiplier = 1.5
+[sub_resource type="BoxMesh" id="Door_mesh"]
+size = Vector3(2.8, 3.0, 0.25)
+material = SubResource("Blue_material")
+
+[sub_resource type="StandardMaterial3D" id="Pickup_material"]
+albedo_color = Color(0.9, 0.7, 0.12, 1)
+emission_enabled = true
+emission = Color(0.8, 0.35, 0.02, 1)
+emission_energy_multiplier = 2.0
+[sub_resource type="SphereMesh" id="Pickup_mesh"]
+radius = 0.28
+height = 0.56
+material = SubResource("Pickup_material")
+[sub_resource type="SphereShape3D" id="Pickup_shape"]
+radius = 0.4
+
+[sub_resource type="StandardMaterial3D" id="Weapon_metal"]
+albedo_color = Color(0.055, 0.065, 0.08, 1)
+metallic = 0.82
+roughness = 0.28
+[sub_resource type="StandardMaterial3D" id="Weapon_grip"]
+albedo_color = Color(0.12, 0.035, 0.025, 1)
+roughness = 0.72
+[sub_resource type="BoxMesh" id="Weapon_slide_mesh"]
+size = Vector3(0.18, 0.16, 0.72)
+material = SubResource("Weapon_metal")
+[sub_resource type="BoxMesh" id="Weapon_grip_mesh"]
+size = Vector3(0.16, 0.34, 0.22)
+material = SubResource("Weapon_grip")
+[sub_resource type="CylinderMesh" id="Weapon_barrel_mesh"]
+top_radius = 0.035
+bottom_radius = 0.035
+height = 0.16
+radial_segments = 12
+material = SubResource("Weapon_metal")
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_game")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+[node name="MoonLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-55, -25, 0)
+light_color = Color(0.35, 0.45, 0.8, 1)
+light_energy = 1.05
+shadow_enabled = true
+[node name="FlickerLight" type="OmniLight3D" parent="."]
+position = Vector3(0, 3, 0)
+omni_range = 14.0
+light_color = Color(0.45, 0.55, 1, 1)
+light_energy = 3.0
+[node name="RedCityLight" type="OmniLight3D" parent="."]
+position = Vector3(-22, 4.5, -16)
+omni_range = 20.0
+light_color = Color(1, 0.12, 0.08, 1)
+light_energy = 5.5
+[node name="CyanCityLight" type="OmniLight3D" parent="."]
+position = Vector3(22, 4.5, -16)
+omni_range = 20.0
+light_color = Color(0.05, 0.55, 1, 1)
+light_energy = 5.5
+[node name="AmberCityLight" type="OmniLight3D" parent="."]
+position = Vector3(0, 4.0, 20)
+omni_range = 22.0
+light_color = Color(1, 0.42, 0.08, 1)
+light_energy = 5.0
+[node name="PurpleCityLight" type="OmniLight3D" parent="."]
+position = Vector3(-26, 4.0, 10)
+omni_range = 18.0
+light_color = Color(0.62, 0.12, 1, 1)
+light_energy = 4.5
+
+[node name="FloorBody" type="StaticBody3D" parent="."]
+[node name="Floor" type="MeshInstance3D" parent="FloorBody"]
+position = Vector3(0, -0.1, 0)
+mesh = SubResource("Floor_mesh")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FloorBody"]
+position = Vector3(0, -0.1, 0)
+shape = SubResource("Floor_shape")
+
+[node name="NorthWall" type="StaticBody3D" parent="."]
+position = Vector3(0, 1.6, -45)
+[node name="Mesh" type="MeshInstance3D" parent="NorthWall"]
+mesh = SubResource("Wall_long_mesh")
+[node name="Collision" type="CollisionShape3D" parent="NorthWall"]
+shape = SubResource("Wall_long_shape")
+[node name="SouthWall" type="StaticBody3D" parent="."]
+position = Vector3(0, 1.6, 45)
+[node name="Mesh" type="MeshInstance3D" parent="SouthWall"]
+mesh = SubResource("Wall_long_mesh")
+[node name="Collision" type="CollisionShape3D" parent="SouthWall"]
+shape = SubResource("Wall_long_shape")
+[node name="WestWall" type="StaticBody3D" parent="."]
+position = Vector3(-60, 1.6, 0)
+[node name="Mesh" type="MeshInstance3D" parent="WestWall"]
+mesh = SubResource("Wall_side_mesh")
+[node name="Collision" type="CollisionShape3D" parent="WestWall"]
+shape = SubResource("Wall_side_shape")
+[node name="EastWall" type="StaticBody3D" parent="."]
+position = Vector3(60, 1.6, 0)
+[node name="Mesh" type="MeshInstance3D" parent="EastWall"]
+mesh = SubResource("Wall_side_mesh")
+[node name="Collision" type="CollisionShape3D" parent="EastWall"]
+shape = SubResource("Wall_side_shape")
+
+[node name="Player" type="CharacterBody3D" parent="."]
+position = Vector3(0, 1, 7)
+script = ExtResource("2_player")
+groups = ["player"]
+[node name="Mesh" type="MeshInstance3D" parent="Player"]
+mesh = SubResource("Player_mesh")
+visible = false
+[node name="PlayerModel" type="Node3D" parent="Player"]
+visible = false
+script = ExtResource("6_humanoid")
+role = "survivor"
+position = Vector3(0, -0.28, 0)
+scale = Vector3(0.9, 0.9, 0.9)
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+shape = SubResource("Player_shape")
+[node name="Muzzle" type="Marker3D" parent="Player"]
+position = Vector3(0, 0.2, -0.7)
+[node name="CameraPivot" type="Node3D" parent="Player"]
+position = Vector3(0, 1.65, 0.08)
+
+[node name="Camera3D" type="Camera3D" parent="Player/CameraPivot"]
+position = Vector3(0, 0, 0)
+current = true
+
+[node name="WeaponView" type="Node3D" parent="Player/CameraPivot/Camera3D"]
+position = Vector3(0.58, -0.43, -0.92)
+rotation_degrees = Vector3(-2, -3, 0)
+[node name="Slide" type="MeshInstance3D" parent="Player/CameraPivot/Camera3D/WeaponView"]
+position = Vector3(0, 0.08, 0)
+mesh = SubResource("Weapon_slide_mesh")
+[node name="Grip" type="MeshInstance3D" parent="Player/CameraPivot/Camera3D/WeaponView"]
+position = Vector3(0, -0.18, 0.13)
+rotation_degrees = Vector3(-10, 0, 0)
+mesh = SubResource("Weapon_grip_mesh")
+[node name="Barrel" type="MeshInstance3D" parent="Player/CameraPivot/Camera3D/WeaponView"]
+position = Vector3(0, 0.08, -0.43)
+rotation_degrees = Vector3(90, 0, 0)
+mesh = SubResource("Weapon_barrel_mesh")
+[node name="Flashlight" type="SpotLight3D" parent="Player/CameraPivot/Camera3D"]
+position = Vector3(0, 0, -0.3)
+spot_range = 16.0
+spot_angle = 28.0
+light_energy = 7.0
+shadow_enabled = true
+
+[node name="ZombieA" type="CharacterBody3D" parent="."]
+position = Vector3(-7, 1, -5)
+script = ExtResource("3_zombie")
+[node name="Mesh" type="MeshInstance3D" parent="ZombieA"]
+mesh = SubResource("Zombie_mesh")
+visible = false
+[node name="EnemyModel" type="Node3D" parent="ZombieA"]
+script = ExtResource("6_humanoid")
+role = "zombie"
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ZombieA"]
+shape = SubResource("Zombie_shape")
+[node name="ZombieB" type="CharacterBody3D" parent="."]
+position = Vector3(6, 1, -5)
+script = ExtResource("3_zombie")
+[node name="Mesh" type="MeshInstance3D" parent="ZombieB"]
+mesh = SubResource("Zombie_mesh")
+visible = false
+[node name="EnemyModel" type="Node3D" parent="ZombieB"]
+script = ExtResource("6_humanoid")
+role = "zombie"
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ZombieB"]
+shape = SubResource("Zombie_shape")
+[node name="ZombieC" type="CharacterBody3D" parent="."]
+position = Vector3(8, 1, 5)
+script = ExtResource("3_zombie")
+[node name="Mesh" type="MeshInstance3D" parent="ZombieC"]
+mesh = SubResource("Zombie_mesh")
+visible = false
+[node name="EnemyModel" type="Node3D" parent="ZombieC"]
+script = ExtResource("6_humanoid")
+role = "zombie"
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ZombieC"]
+shape = SubResource("Zombie_shape")
+
+[node name="Ammo" type="Area3D" parent="."]
+position = Vector3(-5, 0.5, 5)
+script = ExtResource("4_pickup")
+kind = "ammo"
+[node name="Mesh" type="MeshInstance3D" parent="Ammo"]
+mesh = SubResource("Pickup_mesh")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ammo"]
+shape = SubResource("Pickup_shape")
+[node name="Medkit" type="Area3D" parent="."]
+position = Vector3(5, 0.5, 2)
+script = ExtResource("4_pickup")
+kind = "medkit"
+[node name="Mesh" type="MeshInstance3D" parent="Medkit"]
+mesh = SubResource("Pickup_mesh")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Medkit"]
+shape = SubResource("Pickup_shape")
+
+[node name="ExitDoor" type="MeshInstance3D" parent="."]
+position = Vector3(0, 1.5, -27.7)
+mesh = SubResource("Door_mesh")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+[node name="Title" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 18.0
+offset_right = 800.0
+offset_bottom = 50.0
+theme_override_colors/font_color = Color(0.75, 0.84, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "NEKO NIGHTFALL"
+[node name="Objective" type="Label" parent="HUD"]
+offset_left = 26.0
+offset_top = 58.0
+offset_right = 900.0
+offset_bottom = 88.0
+theme_override_colors/font_color = Color(0.95, 0.78, 0.55, 1)
+theme_override_font_sizes/font_size = 18
+[node name="Health" type="Label" parent="HUD"]
+offset_left = 26.0
+offset_top = 94.0
+offset_right = 300.0
+offset_bottom = 120.0
+theme_override_colors/font_color = Color(0.95, 0.4, 0.4, 1)
+theme_override_font_sizes/font_size = 18
+[node name="Ammo" type="Label" parent="HUD"]
+offset_left = 26.0
+offset_top = 126.0
+offset_right = 300.0
+offset_bottom = 152.0
+theme_override_colors/font_color = Color(0.8, 0.85, 0.95, 1)
+theme_override_font_sizes/font_size = 18
+[node name="Message" type="Label" parent="HUD"]
+offset_left = 390.0
+offset_top = 300.0
+offset_right = 900.0
+offset_bottom = 380.0
+theme_override_colors/font_color = Color(1, 0.75, 0.65, 1)
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1
+[node name="TouchControls" type="CanvasLayer" parent="."]
+script = ExtResource("5_touch")
+
+[node name="MoveUp" type="Button" parent="TouchControls"]
+offset_left = 92.0
+offset_top = 470.0
+offset_right = 172.0
+offset_bottom = 550.0
+theme_override_font_sizes/font_size = 28
+text = "^"
+tooltip_text = "Move forward"
+
+[node name="MoveLeft" type="Button" parent="TouchControls"]
+offset_left = 12.0
+offset_top = 550.0
+offset_right = 92.0
+offset_bottom = 630.0
+theme_override_font_sizes/font_size = 28
+text = "<"
+tooltip_text = "Move left"
+
+[node name="MoveDown" type="Button" parent="TouchControls"]
+offset_left = 92.0
+offset_top = 630.0
+offset_right = 172.0
+offset_bottom = 710.0
+theme_override_font_sizes/font_size = 28
+text = "v"
+tooltip_text = "Move backward"
+
+[node name="MoveRight" type="Button" parent="TouchControls"]
+offset_left = 172.0
+offset_top = 550.0
+offset_right = 252.0
+offset_bottom = 630.0
+theme_override_font_sizes/font_size = 28
+text = ">"
+tooltip_text = "Move right"
+
+[node name="Flashlight" type="Button" parent="TouchControls"]
+offset_left = 920.0
+offset_top = 454.0
+offset_right = 1016.0
+offset_bottom = 550.0
+theme_override_font_sizes/font_size = 16
+text = "LIGHT"
+tooltip_text = "Toggle flashlight"
+
+[node name="Reload" type="Button" parent="TouchControls"]
+offset_left = 1038.0
+offset_top = 454.0
+offset_right = 1134.0
+offset_bottom = 550.0
+theme_override_font_sizes/font_size = 16
+text = "RELOAD"
+tooltip_text = "Reload weapon"
+
+[node name="Shoulder" type="Button" parent="TouchControls"]
+offset_left = 920.0
+offset_top = 574.0
+offset_right = 1016.0
+offset_bottom = 670.0
+theme_override_font_sizes/font_size = 15
+text = "SIDE"
+tooltip_text = "Swap first-person camera side"
+
+[node name="Fire" type="Button" parent="TouchControls"]
+offset_left = 1138.0
+offset_top = 574.0
+offset_right = 1258.0
+offset_bottom = 694.0
+theme_override_font_sizes/font_size = 22
+text = "FIRE"
+tooltip_text = "Shoot"
+
+[node name="Joystick" type="Control" parent="TouchControls"]
+visible = false
+layout_mode = 0
+offset_left = 24.0
+offset_top = 476.0
+offset_right = 224.0
+offset_bottom = 676.0
+mouse_filter = 0
+script = ExtResource("7_joystick")
