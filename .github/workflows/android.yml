@@ -54,7 +54,8 @@ jobs:
           sdkmanager \
             --sdk_root="${ANDROID_SDK_ROOT}" \
             "platform-tools" \
-            "platforms/${ANDROID_PLATFORM}" \
+            "platforms;${ANDROID_PLATFORM}" \
+            "build-tools;${ANDROID_BUILD_TOOLS}" \
             "cmake;${ANDROID_CMAKE}" \
             "ndk;${ANDROID_NDK}"
 

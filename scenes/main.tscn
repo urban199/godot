@@ -1,4 +1,4 @@
-[gd_scene load_steps=32 format=3]
+[gd_scene load_steps=33 format=3]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
 [ext_resource type="Script" path="res://scripts/player.gd" id="2_player"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/touch_controls.gd" id="5_touch"]
 [ext_resource type="Script" path="res://scripts/humanoid_visual.gd" id="6_humanoid"]
 [ext_resource type="Script" path="res://scripts/virtual_joystick.gd" id="7_joystick"]
+[ext_resource type="Script" path="res://scripts/weapon_visual.gd" id="8_weapon"]
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 1
@@ -190,6 +191,7 @@ position = Vector3(-0.28, 1.12, -0.52)
 [node name="WeaponView" type="Node3D" parent="Player/PlayerModel"]
 position = Vector3(-0.28, 1.05, -0.25)
 scale = Vector3(0.45, 0.45, 0.45)
+script = ExtResource("8_weapon")
 [node name="Slide" type="MeshInstance3D" parent="Player/PlayerModel/WeaponView"]
 position = Vector3(0, 0.08, 0)
 mesh = SubResource("Weapon_slide_mesh")

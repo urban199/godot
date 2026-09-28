@@ -140,6 +140,7 @@ func shoot() -> void:
     ammo -= 1
     ammo_changed.emit(ammo, reserve_ammo)
     fired.emit()
+    weapon_view.call("fire_effect")
     player_model.call("play_action", "holding-both-shoot")
     var aim_start := camera.global_position
     var aim_end := aim_start + -camera.global_transform.basis.z * aim_ray_distance

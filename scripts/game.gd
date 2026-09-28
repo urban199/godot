@@ -76,22 +76,23 @@ func _build_city_district() -> void:
         body.name = "CityBuilding_%02d" % index
         body.position = blocks[index]
 
-        var building_names := ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u"]
-        var building_path := "res://assets/environment/kenney_city_kit_suburban/Models/GLB format/building-type-%s.glb" % building_names[index % building_names.size()]
-        var building_scene := load(building_path) as PackedScene
-        if building_scene:
-            var building_model := building_scene.instantiate() as Node3D
-            if building_model:
-                building_model.scale = Vector3(2.25, 2.25, 2.25)
-                building_model.position.y = -sizes[index].y * 0.5
-                body.add_child(building_model)
-        else:
-            var fallback_mesh := MeshInstance3D.new()
-            var fallback_box := BoxMesh.new()
-            fallback_box.size = sizes[index]
-            fallback_box.material = building_materials[index % building_materials.size()]
-            fallback_mesh.mesh = fallback_box
-            body.add_child(fallback_mesh)
+        var facade := MeshInstance3D.new()
+        var facade_mesh := BoxMesh.new()
+        facade_mesh.size = sizes[index]
+        facade_mesh.material = building_materials[index % building_materials.size()]
+        facade.mesh = facade_mesh
+        body.add_child(facade)
+
+        var roof_material := _make_material(Color(0.075, 0.085, 0.12, 1.0), 0.92)
+        _add_child_box(body, "RoofCap", Vector3(sizes[index].x + 0.55, 0.38, sizes[index].z + 0.55), Vector3(0, sizes[index].y * 0.5 + 0.19, 0), roof_material)
+
+        var door_material := _make_material(Color(0.095, 0.055, 0.045, 1.0), 0.88)
+        _add_child_box(body, "EntryDoor", Vector3(1.35, 2.45, 0.16), Vector3(sizes[index].x * 0.24, -sizes[index].y * 0.5 + 1.23, -sizes[index].z * 0.5 - 0.09), door_material)
+        var door_light := _make_emissive_material(Color(0.95, 0.48, 0.12, 1.0), 0.65)
+        _add_child_box(body, "DoorLamp", Vector3(0.24, 0.18, 0.15), Vector3(sizes[index].x * 0.24 - 0.9, -sizes[index].y * 0.5 + 2.35, -sizes[index].z * 0.5 - 0.14), door_light)
+
+        var trim_material := _make_material(Color(0.10, 0.12, 0.17, 1.0), 0.82)
+        _add_child_box(body, "FrontBeltline", Vector3(sizes[index].x + 0.08, 0.16, 0.12), Vector3(0, -sizes[index].y * 0.12, -sizes[index].z * 0.5 - 0.08), trim_material)
 
         var collision := CollisionShape3D.new()
         var shape := BoxShape3D.new()
@@ -115,10 +116,10 @@ func _add_window_strip(parent: Node3D, size: Vector3, index: int) -> void:
     for row in range(3):
         var window := MeshInstance3D.new()
         var window_mesh := BoxMesh.new()
-        window_mesh.size = Vector3(maxf(1.3, size.x * 0.55), 0.34, 0.08)
+        window_mesh.size = Vector3(maxf(1.3, size.x * 0.42), 0.72, 0.10)
         window_mesh.material = window_material
         window.mesh = window_mesh
-        window.position = Vector3(0, -size.y * 0.24 + row * 1.85, -size.z * 0.5 - 0.08)
+        window.position = Vector3(-size.x * 0.12, -size.y * 0.30 + row * 2.15, -size.z * 0.5 - 0.08)
         parent.add_child(window)
 
 func _add_city_detail() -> void:
@@ -164,11 +165,11 @@ func _add_city_detail() -> void:
         _add_street_light("StreetLight_%02d" % i, light_positions[i])
 
     for x in [-54, -42, -30, 30, 42, 54]:
-        _add_scaled_asset("Tree_%d_N" % x, "tree-large", Vector3(x, 0, -40), Vector3(2.2, 2.2, 2.2))
-        _add_scaled_asset("Tree_%d_S" % x, "tree-large", Vector3(x, 0, 40), Vector3(2.2, 2.2, 2.2))
+        _add_procedural_tree("Tree_%d_N" % x, Vector3(x, 0, -40), 2.2)
+        _add_procedural_tree("Tree_%d_S" % x, Vector3(x, 0, 40), 2.2)
     for z in [-30, -18, 18, 30]:
-        _add_scaled_asset("Planter_W_%d" % z, "planter", Vector3(-52, 0, z), Vector3(2.4, 2.4, 2.4))
-        _add_scaled_asset("Planter_E_%d" % z, "planter", Vector3(52, 0, z), Vector3(2.4, 2.4, 2.4))
+        _add_procedural_planter("Planter_W_%d" % z, Vector3(-52, 0, z), 2.4)
+        _add_procedural_planter("Planter_E_%d" % z, Vector3(52, 0, z), 2.4)
 
     for i in range(10):
         var x := -48 + i * 10
@@ -178,8 +179,8 @@ func _add_city_detail() -> void:
         _add_bench("Bench_%02d" % i, Vector3(-12 if i % 2 == 0 else 12, 0.42, z), wood, metal)
 
     for z in [-34, -22, -10, 10, 22, 34]:
-        _add_scaled_asset("FenceLeft_%d" % z, "fence-1x4", Vector3(-57, 0, z), Vector3(2.0, 2.0, 2.0))
-        _add_scaled_asset("FenceRight_%d" % z, "fence-1x4", Vector3(57, 0, z), Vector3(2.0, 2.0, 2.0))
+        _add_fence_section("FenceLeft_%d" % z, Vector3(-57, 0, z), 9.0)
+        _add_fence_section("FenceRight_%d" % z, Vector3(57, 0, z), 9.0)
 
 func _make_material(color: Color, roughness: float) -> StandardMaterial3D:
     var material := StandardMaterial3D.new()
@@ -193,6 +194,96 @@ func _make_emissive_material(color: Color, energy: float) -> StandardMaterial3D:
     material.emission = color
     material.emission_energy_multiplier = energy
     return material
+
+func _add_child_box(parent: Node3D, name: String, size: Vector3, position: Vector3, material: Material) -> MeshInstance3D:
+    var instance := MeshInstance3D.new()
+    instance.name = name
+    var mesh := BoxMesh.new()
+    mesh.size = size
+    mesh.material = material
+    instance.mesh = mesh
+    instance.position = position
+    parent.add_child(instance)
+    return instance
+
+func _add_child_ellipsoid(parent: Node3D, name: String, position: Vector3, size: Vector3, material: Material) -> MeshInstance3D:
+    var instance := MeshInstance3D.new()
+    instance.name = name
+    var mesh := SphereMesh.new()
+    mesh.radius = 0.5
+    mesh.height = 1.0
+    mesh.material = material
+    instance.mesh = mesh
+    instance.position = position
+    instance.scale = size
+    parent.add_child(instance)
+    return instance
+
+func _add_procedural_tree(name: String, position: Vector3, scale: float) -> void:
+    var tree := StaticBody3D.new()
+    tree.name = name
+    tree.position = position
+    add_child(tree)
+    var bark := _make_material(Color(0.16, 0.105, 0.075, 1.0), 0.96)
+    var trunk_height := 3.25 * scale
+    var trunk := CylinderMesh.new()
+    trunk.top_radius = 0.18 * scale
+    trunk.bottom_radius = 0.34 * scale
+    trunk.height = trunk_height
+    trunk.radial_segments = 8
+    trunk.material = bark
+    var trunk_mesh := MeshInstance3D.new()
+    trunk_mesh.mesh = trunk
+    trunk_mesh.position.y = trunk_height * 0.5
+    tree.add_child(trunk_mesh)
+    var foliage := [
+        _make_material(Color(0.055, 0.15, 0.12, 1.0), 0.98),
+        _make_material(Color(0.075, 0.21, 0.16, 1.0), 0.98),
+        _make_material(Color(0.11, 0.24, 0.18, 1.0), 0.98)
+    ]
+    _add_child_ellipsoid(tree, "CanopyCore", Vector3(0, trunk_height + 0.6 * scale, 0), Vector3(2.35, 2.0, 2.25) * scale, foliage[0])
+    _add_child_ellipsoid(tree, "CanopyLeft", Vector3(-0.72 * scale, trunk_height + 0.1 * scale, 0.12 * scale), Vector3(1.55, 1.45, 1.6) * scale, foliage[1])
+    _add_child_ellipsoid(tree, "CanopyRight", Vector3(0.68 * scale, trunk_height + 0.15 * scale, -0.08 * scale), Vector3(1.6, 1.55, 1.65) * scale, foliage[2])
+    var trunk_collision := CollisionShape3D.new()
+    var trunk_shape := CapsuleShape3D.new()
+    trunk_shape.radius = 0.34 * scale
+    trunk_shape.height = trunk_height
+    trunk_collision.shape = trunk_shape
+    trunk_collision.position.y = trunk_height * 0.5
+    tree.add_child(trunk_collision)
+
+func _add_procedural_planter(name: String, position: Vector3, scale: float) -> void:
+    var planter := Node3D.new()
+    planter.name = name
+    planter.position = position
+    add_child(planter)
+    var stone := _make_material(Color(0.24, 0.25, 0.27, 1.0), 0.94)
+    var soil := _make_material(Color(0.075, 0.055, 0.04, 1.0), 1.0)
+    var leaf := _make_material(Color(0.08, 0.25, 0.15, 1.0), 0.95)
+    _add_child_box(planter, "StoneTrough", Vector3(0.95, 0.30, 0.52) * scale, Vector3(0, 0.25 * scale, 0), stone)
+    _add_child_box(planter, "Soil", Vector3(0.82, 0.08, 0.40) * scale, Vector3(0, 0.43 * scale, 0), soil)
+    for i in range(4):
+        var x := (float(i) - 1.5) * 0.18 * scale
+        _add_child_ellipsoid(planter, "Shrub_%d" % i, Vector3(x, 0.72 * scale + absf(x) * 0.18, 0), Vector3(0.34, 0.66, 0.38) * scale, leaf)
+
+func _add_fence_section(name: String, position: Vector3, length: float) -> void:
+    var fence := StaticBody3D.new()
+    fence.name = name
+    fence.position = position
+    add_child(fence)
+    var wood := _make_material(Color(0.18, 0.15, 0.13, 1.0), 0.94)
+    var rail_size := Vector3(0.14, 0.16, length)
+    _add_child_box(fence, "UpperRail", rail_size, Vector3(0, 1.18, 0), wood)
+    _add_child_box(fence, "LowerRail", rail_size, Vector3(0, 0.56, 0), wood)
+    for i in range(5):
+        var z := -length * 0.5 + float(i) * length / 4.0
+        _add_child_box(fence, "Post_%d" % i, Vector3(0.20, 1.55, 0.22), Vector3(0, 0.76, z), wood)
+    var collision := CollisionShape3D.new()
+    var shape := BoxShape3D.new()
+    shape.size = Vector3(0.22, 1.55, length)
+    collision.shape = shape
+    collision.position.y = 0.76
+    fence.add_child(collision)
 
 func _add_box_prop(name: String, position: Vector3, size: Vector3, material: Material, solid := false) -> Node3D:
     var parent: Node3D = StaticBody3D.new() if solid else Node3D.new()
@@ -299,20 +390,3 @@ func _add_bench(name: String, position: Vector3, wood: Material, metal: Material
         leg.position = Vector3(x, -0.35, 0.0)
         leg.mesh = leg_mesh
         bench.add_child(leg)
-
-func _add_scaled_asset(name: String, asset_name: String, position: Vector3, scale: Vector3) -> Node3D:
-    var path := "res://assets/environment/kenney_city_kit_suburban/Models/GLB format/%s.glb" % asset_name
-    var scene := load(path) as PackedScene
-    if scene:
-        var instance := scene.instantiate() as Node3D
-        if instance:
-            instance.name = name
-            instance.position = position
-            instance.scale = scale
-            add_child(instance)
-            return instance
-    var placeholder := Node3D.new()
-    placeholder.name = name
-    placeholder.position = position
-    add_child(placeholder)
-    return placeholder

@@ -1,10 +1,3 @@
-# Character asset drop folder
+# Character assets
 
-Upload your downloaded character assets here manually.
-
-Recommended layout:
-- player/ - survivor model and animations
-- enemies/ - zombie/creature models and animations
-- props/ - civilian or police props
-
-Preferred formats for Godot: .glb or .gltf. Keep each model with its textures in the same subfolder. Use only assets whose license permits redistribution; the recommended CC0 sources are listed in ASSET_SOURCES.md.
+The active survivor and zombie visuals are built from original procedural meshes and Godot materials in `scripts/humanoid_visual.gd`; no imported model or Blender project is required. Keep future character source files in `player/` or `enemies/`, and record their source and license in `ASSET_SOURCES.md` before referencing them from a scene or script.
