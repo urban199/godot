@@ -160,7 +160,7 @@ func reload_weapon() -> void:
     if ammo >= 6 or reserve_ammo <= 0: return
     reload_animation = 1.0
     var needed := 6 - ammo
-    var loaded := min(needed, reserve_ammo)
+    var loaded: int = mini(needed, reserve_ammo)
     ammo += loaded
     reserve_ammo -= loaded
     ammo_changed.emit(ammo, reserve_ammo)

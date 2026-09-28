@@ -111,16 +111,17 @@ func _ellipsoid(position: Vector3, scale: Vector3, material: Material, parent: N
 	var mesh := SphereMesh.new()
 	mesh.radius = 0.5
 	mesh.height = 1.0
-	mesh.radial_segments = 16
-	mesh.rings = 8
+	# Finer tessellation keeps the stylized anatomy smooth at close camera distances.
+	mesh.radial_segments = 32
+	mesh.rings = 16
 	return _mesh(mesh, position, material, parent, scale)
 
 func _capsule(radius: float, height: float, position: Vector3, material: Material, parent: Node3D) -> MeshInstance3D:
 	var mesh := CapsuleMesh.new()
 	mesh.radius = radius
 	mesh.height = height
-	mesh.radial_segments = 10
-	mesh.rings = 4
+	mesh.radial_segments = 20
+	mesh.rings = 8
 	return _mesh(mesh, position, material, parent)
 
 func _cylinder(top: float, bottom: float, height: float, position: Vector3, material: Material, parent: Node3D) -> MeshInstance3D:
@@ -128,7 +129,7 @@ func _cylinder(top: float, bottom: float, height: float, position: Vector3, mate
 	mesh.top_radius = top
 	mesh.bottom_radius = bottom
 	mesh.height = height
-	mesh.radial_segments = 12
+	mesh.radial_segments = 24
 	return _mesh(mesh, position, material, parent)
 
 func _build_survivor() -> void:
@@ -149,19 +150,26 @@ func _build_survivor() -> void:
 	var pupil := _toon(Color(0.12, 0.025, 0.055), 0.25)
 	var boot := _toon(Color(0.035, 0.04, 0.05), 0.38, 0.12)
 
-	# Original anime face, shoulder-length black hair and Santa-inspired cap.
-	_ellipsoid(Vector3(0, 1.72, 0), Vector3(0.56, 0.60, 0.47), skin, visual_root)
-	_ellipsoid(Vector3(0, 1.99, 0.06), Vector3(0.64, 0.32, 0.55), hair, visual_root)
+	# Anime-proportioned head: tapered lower face, fuller forehead and a visible neck.
+	_ellipsoid(Vector3(0, 1.73, 0.005), Vector3(0.43, 0.53, 0.37), skin, visual_root)
+	_ellipsoid(Vector3(0, 1.90, 0.012), Vector3(0.43, 0.38, 0.38), skin, visual_root)
+	_ellipsoid(Vector3(0, 1.39, 0.012), Vector3(0.17, 0.25, 0.18), skin, visual_root)
+	# Ears and subtle anime nose give the face readable human landmarks.
+	for side in [-1.0, 1.0]:
+		_ellipsoid(Vector3(side * 0.414, 1.69, -0.005), Vector3(0.075, 0.12, 0.09), skin, visual_root)
+		_ellipsoid(Vector3(side * 0.443, 1.69, -0.035), Vector3(0.022, 0.052, 0.035), skin_shadow, visual_root)
+	_ellipsoid(Vector3(0, 1.685, -0.204), Vector3(0.025, 0.04, 0.024), skin_shadow, visual_root)
+	_ellipsoid(Vector3(0, 2.00, 0.055), Vector3(0.57, 0.30, 0.49), hair, visual_root)
 	for i in range(5):
 		var x := (float(i) - 2.0) * 0.19
-		var lock := _capsule(0.105 if i % 2 == 0 else 0.085, 0.90 - absf(x) * 0.22, Vector3(x, 1.34, 0.17 + absf(x) * 0.12), hair if i % 2 == 0 else hair_shadow, visual_root)
+		var lock := _capsule(0.085 if i % 2 == 0 else 0.072, 0.78 - absf(x) * 0.18, Vector3(x, 1.40, 0.17 + absf(x) * 0.12), hair if i % 2 == 0 else hair_shadow, visual_root)
 		lock.rotation.z = x * 0.42
 	for i in range(3):
 		var x := (float(i) - 1.0) * 0.17
-		var bang := _capsule(0.09, 0.43, Vector3(x, 1.88, -0.225), hair if i != 1 else hair_light, visual_root)
+		var bang := _capsule(0.075, 0.39, Vector3(x, 1.91, -0.255), hair if i != 1 else hair_light, visual_root)
 		bang.rotation.z = -x * 1.1
-	_ellipsoid(Vector3(-0.31, 1.58, -0.015), Vector3(0.13, 0.36, 0.15), hair, visual_root)
-	_ellipsoid(Vector3(0.31, 1.58, -0.015), Vector3(0.13, 0.36, 0.15), hair_shadow, visual_root)
+	_ellipsoid(Vector3(-0.29, 1.59, -0.015), Vector3(0.105, 0.30, 0.13), hair, visual_root)
+	_ellipsoid(Vector3(0.29, 1.59, -0.015), Vector3(0.105, 0.30, 0.13), hair_shadow, visual_root)
 	var santa_band := _cylinder(0.28, 0.31, 0.12, Vector3(0, 2.04, 0.035), coat_shadow, visual_root)
 	santa_band.rotation.z = 0.10
 	var santa_cap := _cylinder(0.0, 0.235, 0.47, Vector3(0.08, 2.27, 0.04), coat, visual_root)
@@ -170,54 +178,62 @@ func _build_survivor() -> void:
 
 	# Face: red eyes, bright catchlights, lashes and small mouth.
 	for side in [-1.0, 1.0]:
-		_ellipsoid(Vector3(side * 0.125, 1.75, -0.246), Vector3(0.12, 0.15, 0.045), eye_white, visual_root)
-		_ellipsoid(Vector3(side * 0.125, 1.745, -0.283), Vector3(0.066, 0.105, 0.025), iris, visual_root)
-		_ellipsoid(Vector3(side * 0.125, 1.74, -0.305), Vector3(0.031, 0.072, 0.018), pupil, visual_root)
-		_ellipsoid(Vector3(side * 0.105, 1.79, -0.322), Vector3(0.024, 0.028, 0.012), eye_white, visual_root)
-		_box(Vector3(0.17, 0.025, 0.025), Vector3(side * 0.125, 1.835, -0.28), hair_shadow, visual_root, Vector3(0, 0, side * -0.12))
-	_box(Vector3(0.09, 0.018, 0.018), Vector3(0, 1.62, -0.285), skin_shadow, visual_root)
+		_ellipsoid(Vector3(side * 0.12, 1.75, -0.207), Vector3(0.105, 0.135, 0.036), eye_white, visual_root)
+		_ellipsoid(Vector3(side * 0.12, 1.744, -0.239), Vector3(0.061, 0.10, 0.022), iris, visual_root)
+		_ellipsoid(Vector3(side * 0.12, 1.738, -0.258), Vector3(0.029, 0.067, 0.014), pupil, visual_root)
+		_ellipsoid(Vector3(side * 0.103, 1.792, -0.271), Vector3(0.021, 0.026, 0.009), eye_white, visual_root)
+		# Soft cheek tint and tapered lash line make the face read as anime at game scale.
+		_ellipsoid(Vector3(side * 0.245, 1.675, -0.174), Vector3(0.075, 0.035, 0.018), skin_shadow, visual_root)
+		_box(Vector3(0.15, 0.022, 0.018), Vector3(side * 0.12, 1.835, -0.224), hair_shadow, visual_root, Vector3(0, 0, side * -0.12))
+	_ellipsoid(Vector3(0, 1.665, -0.225), Vector3(0.021, 0.025, 0.018), skin, visual_root)
+	_box(Vector3(0.055, 0.014, 0.012), Vector3(0, 1.615, -0.225), skin_shadow, visual_root)
 
-	# Festive red dress with soft white trim and a dark waist belt.
-	_capsule(0.31, 0.78, Vector3(0, 1.03, 0), coat, visual_root)
-	_box(Vector3(0.17, 0.78, 0.11), Vector3(-0.145, 0.98, -0.255), dress_red, visual_root, Vector3(0, 0, -0.12))
-	_box(Vector3(0.17, 0.78, 0.11), Vector3(0.145, 0.98, -0.255), dress_red, visual_root, Vector3(0, 0, 0.12))
+	# Human torso silhouette: broad upper chest, narrow waist and shaped hips.
+	# These overlapping smooth forms avoid the boxy mannequin look while preserving articulation.
+	_ellipsoid(Vector3(0, 1.10, 0), Vector3(0.54, 0.48, 0.31), coat, visual_root)
+	_ellipsoid(Vector3(0, 0.86, 0.012), Vector3(0.39, 0.34, 0.285), coat, visual_root)
+	_ellipsoid(Vector3(0, 0.64, 0.015), Vector3(0.48, 0.31, 0.31), coat, visual_root)
+	# Festive red dress with a fitted front panel, soft white trim and a waist belt.
+	_ellipsoid(Vector3(0, 1.27, -0.205), Vector3(0.19, 0.31, 0.055), dress_red, visual_root)
+	_ellipsoid(Vector3(-0.15, 1.00, -0.18), Vector3(0.15, 0.32, 0.085), dress_red, visual_root)
+	_ellipsoid(Vector3(0.15, 1.00, -0.18), Vector3(0.15, 0.32, 0.085), dress_red, visual_root)
 	_cylinder(0.24, 0.43, 0.48, Vector3(0, 0.61, 0), dress_red, visual_root)
 	_cylinder(0.43, 0.48, 0.11, Vector3(0, 0.405, 0), coat_shadow, visual_root)
-	_box(Vector3(0.54, 0.075, 0.38), Vector3(0, 0.78, -0.02), belt, visual_root)
-	_box(Vector3(0.13, 0.13, 0.035), Vector3(0, 0.78, -0.225), gold, visual_root)
+	_cylinder(0.285, 0.285, 0.075, Vector3(0, 0.78, 0), belt, visual_root)
+	_box(Vector3(0.11, 0.12, 0.035), Vector3(0, 0.78, -0.275), gold, visual_root)
 	_box(Vector3(0.11, 0.22, 0.07), Vector3(0, 1.37, -0.29), red, visual_root)
 	_box(Vector3(0.10, 0.14, 0.08), Vector3(0, 1.24, -0.30), coat_shadow, visual_root)
 	_capsule(0.16, 0.24, Vector3(0, 1.46, 0), coat_shadow, visual_root)
 	for y in [1.10, 0.96, 0.82]:
 		_ellipsoid(Vector3(0, y, -0.31), Vector3(0.055, 0.055, 0.035), coat_shadow, visual_root)
 	for side in [-1.0, 1.0]:
-		_box(Vector3(0.18, 0.12, 0.30), Vector3(side * 0.34, 1.29, 0), coat_shadow, visual_root)
+		_ellipsoid(Vector3(side * 0.32, 1.32, 0), Vector3(0.19, 0.16, 0.21), coat_shadow, visual_root)
 		_box(Vector3(0.13, 0.16, 0.035), Vector3(side * 0.22, 0.88, -0.23), gold, visual_root)
 
 	# Articulated sleeves, cuffs, gloves, long legs and polished boots.
 	left_arm = Node3D.new()
-	left_arm.position = Vector3(-0.36, 1.24, 0)
+	left_arm.position = Vector3(-0.34, 1.30, 0)
 	visual_root.add_child(left_arm)
-	_capsule(0.115, 0.58, Vector3(0, -0.24, 0), coat, left_arm)
+	_capsule(0.105, 0.52, Vector3(0, -0.24, 0), coat, left_arm)
 	_capsule(0.12, 0.18, Vector3(0, -0.51, -0.015), coat_shadow, left_arm)
 	_capsule(0.095, 0.18, Vector3(0, -0.64, -0.025), skin, left_arm)
 	right_arm = Node3D.new()
-	right_arm.position = Vector3(0.36, 1.24, 0)
+	right_arm.position = Vector3(0.34, 1.30, 0)
 	visual_root.add_child(right_arm)
-	_capsule(0.115, 0.58, Vector3(0, -0.24, 0), coat, right_arm)
+	_capsule(0.105, 0.52, Vector3(0, -0.24, 0), coat, right_arm)
 	_capsule(0.12, 0.18, Vector3(0, -0.51, -0.015), coat_shadow, right_arm)
 	_capsule(0.095, 0.18, Vector3(0, -0.64, -0.025), skin, right_arm)
 	left_leg = Node3D.new()
-	left_leg.position = Vector3(-0.15, 0.48, 0)
+	left_leg.position = Vector3(-0.14, 0.48, 0)
 	visual_root.add_child(left_leg)
-	_capsule(0.12, 0.57, Vector3(0, -0.29, 0), navy, left_leg)
+	_capsule(0.105, 0.55, Vector3(0, -0.29, 0), navy, left_leg)
 	_capsule(0.145, 0.72, Vector3(0, -0.49, -0.015), boot, left_leg)
 	_capsule(0.145, 0.43, Vector3(0, -0.74, -0.045), boot, left_leg)
 	_box(Vector3(0.24, 0.13, 0.34), Vector3(0, -0.91, -0.12), boot, left_leg)
 	right_leg = Node3D.new()
-	right_leg.position = Vector3(0.15, 0.48, 0)
+	right_leg.position = Vector3(0.14, 0.48, 0)
 	visual_root.add_child(right_leg)
-	_capsule(0.12, 0.57, Vector3(0, -0.29, 0), navy, right_leg)
+	_capsule(0.105, 0.55, Vector3(0, -0.29, 0), navy, right_leg)
 	_capsule(0.145, 0.72, Vector3(0, -0.49, -0.015), boot, right_leg)
 	_capsule(0.145, 0.43, Vector3(0, -0.74, -0.045), boot, right_leg)
 	_box(Vector3(0.24, 0.13, 0.34), Vector3(0, -0.91, -0.12), boot, right_leg)
