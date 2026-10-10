@@ -62,7 +62,7 @@ func _ready() -> void:
     camera_arm.add_excluded_object(get_rid())
     _create_first_person_arms()
     mobile_joystick = get_tree().get_first_node_in_group("mobile_joystick")
-    if not DisplayServer.is_touchscreen_available():
+    if not DisplayServer.is_touchscreen_available() and not OS.has_feature("mobile") and not OS.has_feature("android") and not OS.has_feature("ios"):
         Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
     health_changed.emit(health)
     ammo_changed.emit(ammo, reserve_ammo)
