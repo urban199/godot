@@ -4,6 +4,17 @@ const TOUCH_BUTTON_NAMES: Array[String] = [
     "MoveUp", "MoveLeft", "MoveDown", "MoveRight", "Sprint",
     "Fire", "Reload", "Flashlight", "Shoulder", "View"
 ]
+const TOUCH_ACTIONS: Dictionary = {
+    "MoveUp": "move_forward",
+    "MoveLeft": "move_left",
+    "MoveDown": "move_backward",
+    "MoveRight": "move_right",
+    "Sprint": "sprint",
+    "Fire": "fire",
+    "Reload": "reload",
+    "Flashlight": "flashlight",
+    "Shoulder": "shoulder_swap"
+}
 
 var held_actions: Dictionary = {}
 
@@ -53,6 +64,7 @@ func _create_multitouch_overlays() -> void:
         hit_button.shape = hit_shape
         hit_button.shape_visible = false
         hit_button.visibility_mode = TouchScreenButton.VISIBILITY_TOUCHSCREEN_ONLY
+        hit_button.action = TOUCH_ACTIONS.get(button_name, "")
         hit_button.pressed.connect(_on_touch_button_pressed.bind(button_name))
         hit_button.released.connect(_on_touch_button_released.bind(button_name))
         visual_button.add_child(hit_button)
@@ -60,27 +72,12 @@ func _create_multitouch_overlays() -> void:
 func _on_touch_button_pressed(button_name: String) -> void:
     var visual_button: Button = get_node(button_name)
     visual_button.set_pressed_no_signal(true)
-    match button_name:
-        "MoveUp": _press("move_forward")
-        "MoveLeft": _press("move_left")
-        "MoveDown": _press("move_backward")
-        "MoveRight": _press("move_right")
-        "Sprint": _press("sprint")
-        "Fire": _one_shot("fire")
-        "Reload": _one_shot("reload")
-        "Flashlight": _one_shot("flashlight")
-        "Shoulder": _one_shot("shoulder_swap")
-        "View": _toggle_view()
+    if button_name == "View":
+        _toggle_view()
 
 func _on_touch_button_released(button_name: String) -> void:
     var visual_button: Button = get_node(button_name)
     visual_button.set_pressed_no_signal(false)
-    match button_name:
-        "MoveUp": _release("move_forward")
-        "MoveLeft": _release("move_left")
-        "MoveDown": _release("move_backward")
-        "MoveRight": _release("move_right")
-        "Sprint": _release("sprint")
 
 func _style_round(button: Button, color: Color) -> void:
     var normal := StyleBoxFlat.new()
