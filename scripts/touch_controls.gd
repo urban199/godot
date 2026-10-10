@@ -40,21 +40,22 @@ func _ready() -> void:
 func _create_multitouch_overlays() -> void:
     for button_name in TOUCH_BUTTON_NAMES:
         var visual_button: Button = get_node(button_name)
-        var button_rect: Rect2 = visual_button.get_global_rect()
-        if button_rect.size.x <= 0.0 or button_rect.size.y <= 0.0:
+        if visual_button.size.x <= 0.0 or visual_button.size.y <= 0.0:
             continue
 
         var hit_button := TouchScreenButton.new()
         hit_button.name = "Touch_" + button_name
-        hit_button.position = button_rect.position + button_rect.size * 0.5
+        # Parent to the visual Control so both inherit the exact same canvas
+        # and stretch transform (important on phones with different aspect ratios).
+        hit_button.position = visual_button.size * 0.5
         var hit_shape := RectangleShape2D.new()
-        hit_shape.size = button_rect.size
+        hit_shape.size = visual_button.size
         hit_button.shape = hit_shape
         hit_button.shape_visible = false
         hit_button.visibility_mode = TouchScreenButton.VISIBILITY_TOUCHSCREEN_ONLY
         hit_button.pressed.connect(_on_touch_button_pressed.bind(button_name))
         hit_button.released.connect(_on_touch_button_released.bind(button_name))
-        add_child(hit_button)
+        visual_button.add_child(hit_button)
 
 func _on_touch_button_pressed(button_name: String) -> void:
     var visual_button: Button = get_node(button_name)
