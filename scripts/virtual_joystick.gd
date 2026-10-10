@@ -12,6 +12,8 @@ func _ready() -> void:
     queue_redraw()
 
 func _process(_delta: float) -> void:
+    if not is_visible_in_tree():
+        return
     if not active or input_vector.length() < 0.12:
         return
     if input_vector.x < -0.12: Input.action_press("move_left", -input_vector.x)
@@ -20,6 +22,8 @@ func _process(_delta: float) -> void:
     if input_vector.y > 0.12: Input.action_press("move_backward", input_vector.y)
 
 func _input(event: InputEvent) -> void:
+    if not is_visible_in_tree():
+        return
     if event is InputEventScreenTouch:
         if event.pressed:
             if not get_global_rect().has_point(event.position):

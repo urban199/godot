@@ -4,8 +4,8 @@ signal health_changed(value: int)
 signal ammo_changed(current: int, reserve: int)
 signal fired
 
-@export var walk_speed := 4.0
-@export var sprint_speed := 6.5
+@export var walk_speed := 4.8
+@export var sprint_speed := 8.2
 @export var jump_velocity := 5.5
 @export var max_health := 100
 @export var damage := 35
@@ -173,8 +173,7 @@ func _physics_process(delta: float) -> void:
     if Input.is_action_just_pressed("jump") and is_on_floor(): velocity.y = jump_velocity
     if Input.is_action_just_pressed("reload"): reload_weapon()
     if Input.is_action_just_pressed("flashlight"):
-        flashlight_on = not flashlight_on
-        flashlight.visible = flashlight_on
+        toggle_flashlight()
     if Input.is_action_just_pressed("fire"): shoot()
     if Input.is_action_just_pressed("shoulder_swap"): swap_camera_shoulder()
     if not mobile_joystick:
@@ -191,14 +190,12 @@ func _physics_process(delta: float) -> void:
     if Input.is_physical_key_pressed(KEY_W): input_vector.y = -1.0
     if Input.is_physical_key_pressed(KEY_S): input_vector.y = 1.0
     var direction := (transform.basis * Vector3(input_vector.x, 0.0, input_vector.y)).normalized()
-    var is_sprinting := Input.is_action_pressed("sprint")
+    var is_sprinting := Input.is_action_pressed("sprint") or mobile_actions.get("sprint", false)
     var speed := sprint_speed if is_sprinting else walk_speed
-    if direction:
-        velocity.x = direction.x * speed
-        velocity.z = direction.z * speed
-    else:
-        velocity.x = move_toward(velocity.x, 0.0, speed * delta * 6.0)
-        velocity.z = move_toward(velocity.z, 0.0, speed * delta * 6.0)
+    var target_velocity := direction * speed
+    var acceleration := 22.0 if direction.length_squared() > 0.001 else 26.0
+    velocity.x = move_toward(velocity.x, target_velocity.x, acceleration * delta)
+    velocity.z = move_toward(velocity.z, target_velocity.z, acceleration * delta)
     move_and_slide()
     var movement_amount := Vector2(velocity.x, velocity.z).length()
     player_model.call("set_moving", movement_amount > 0.15, is_sprinting and movement_amount > 0.15)
@@ -217,6 +214,10 @@ func _physics_process(delta: float) -> void:
 func swap_camera_shoulder() -> void:
     shoulder_side *= -1.0
     camera_arm.position.x = camera_side_offset * shoulder_side
+
+func toggle_flashlight() -> void:
+    flashlight_on = not flashlight_on
+    flashlight.visible = flashlight_on
 
 func shoot() -> void:
     if not can_shoot or ammo <= 0: return

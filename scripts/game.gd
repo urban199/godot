@@ -4,6 +4,8 @@ var defeated := 0
 var total_enemies := 3
 var won := false
 var lost := false
+var dark_window_material: StandardMaterial3D
+var warm_window_material: StandardMaterial3D
 @onready var player = $Player
 @onready var objective: Label = $HUD/Objective
 @onready var health_label: Label = $HUD/Health
@@ -47,11 +49,14 @@ func _on_ammo_changed(current: int, reserve: int) -> void: ammo_label.text = "Am
 func _on_fired() -> void: message.text = ""
 
 func _build_city_district() -> void:
+    dark_window_material = _make_material(Color(0.075, 0.095, 0.11, 1.0), 0.34)
+    dark_window_material.metallic = 0.12
+    warm_window_material = _make_emissive_material(Color(0.48, 0.31, 0.16, 1.0), 0.32)
     var building_materials: Array[StandardMaterial3D] = []
-    for color in [Color(0.16, 0.22, 0.32), Color(0.32, 0.18, 0.24), Color(0.16, 0.32, 0.30), Color(0.38, 0.25, 0.14), Color(0.24, 0.18, 0.38)]:
+    for color in [Color(0.28, 0.29, 0.28), Color(0.30, 0.24, 0.21), Color(0.22, 0.26, 0.25), Color(0.31, 0.22, 0.19), Color(0.25, 0.27, 0.24)]:
         var material := StandardMaterial3D.new()
         material.albedo_color = color
-        material.roughness = 0.86
+        material.roughness = 0.94
         building_materials.append(material)
 
     var blocks := [
@@ -108,9 +113,9 @@ func _build_city_district() -> void:
 
 func _add_expanded_city() -> void:
     var palette := [
-        Color(0.105, 0.13, 0.17, 1.0), Color(0.19, 0.12, 0.13, 1.0),
-        Color(0.12, 0.17, 0.16, 1.0), Color(0.22, 0.18, 0.13, 1.0),
-        Color(0.14, 0.13, 0.20, 1.0)
+        Color(0.25, 0.27, 0.27, 1.0), Color(0.30, 0.23, 0.21, 1.0),
+        Color(0.22, 0.25, 0.23, 1.0), Color(0.32, 0.28, 0.22, 1.0),
+        Color(0.26, 0.25, 0.28, 1.0)
     ]
     var roof_material := _make_material(Color(0.045, 0.05, 0.065, 1.0), 0.96)
     var trim_material := _make_material(Color(0.065, 0.07, 0.08, 1.0), 0.88)
@@ -164,29 +169,65 @@ func _add_expanded_city() -> void:
         _add_abandoned_car("OuterWreck_%02d" % i, wreck_positions[i], _make_material(Color(0.16, 0.055, 0.045, 1.0), 0.9), i % 2 == 0)
 
 func _add_window_strip(parent: Node3D, size: Vector3, index: int) -> void:
-    var window_material := StandardMaterial3D.new()
-    var window_colors := [Color(1.0, 0.27, 0.08), Color(0.10, 0.65, 1.0), Color(0.75, 0.20, 1.0), Color(1.0, 0.72, 0.12)]
-    window_material.albedo_color = window_colors[index % window_colors.size()]
-    window_material.emission_enabled = true
-    window_material.emission = window_colors[index % window_colors.size()]
-    window_material.emission_energy_multiplier = 1.4
+    var columns := maxi(3, int(size.x / 3.5))
+    var rows := clampi(int((size.y - 1.5) / 2.6), 2, 5)
+    var window_width := clampf(size.x / float(columns + 2), 1.05, 1.8)
+    var window_height := 0.95
+    var front_dark: Array[Vector3] = []
+    var front_warm: Array[Vector3] = []
+    for row in range(rows):
+        var y := -size.y * 0.5 + 1.8 + row * 2.35
+        for column in range(columns):
+            var x := -size.x * 0.5 + size.x * float(column + 1) / float(columns + 1)
+            var position := Vector3(x, y, -size.z * 0.5 - 0.07)
+            if (index * 5 + row * 3 + column * 7) % 8 == 0:
+                front_warm.append(position)
+            else:
+                front_dark.append(position)
 
-    for row in range(3):
-        var window := MeshInstance3D.new()
-        var window_mesh := BoxMesh.new()
-        window_mesh.size = Vector3(maxf(1.3, size.x * 0.42), 0.72, 0.10)
-        window_mesh.material = window_material
-        window.mesh = window_mesh
-        window.position = Vector3(-size.x * 0.12, -size.y * 0.30 + row * 2.15, -size.z * 0.5 - 0.08)
-        parent.add_child(window)
+    var side_columns := maxi(3, int(size.z / 3.2))
+    var side_window_width := clampf(size.z / float(side_columns + 2), 1.0, 1.65)
+    var side_dark: Array[Vector3] = []
+    var side_warm: Array[Vector3] = []
+    for row in range(rows):
+        var y := -size.y * 0.5 + 1.8 + row * 2.35
+        for column in range(side_columns):
+            var z := -size.z * 0.5 + size.z * float(column + 1) / float(side_columns + 1)
+            var position := Vector3(size.x * 0.5 + 0.07, y, z)
+            if (index * 3 + row * 7 + column * 5) % 9 == 0:
+                side_warm.append(position)
+            else:
+                side_dark.append(position)
+
+    _add_window_multimesh(parent, "FrontWindows_Dark", Vector3(window_width, window_height, 0.08), front_dark, dark_window_material)
+    _add_window_multimesh(parent, "FrontWindows_Lit", Vector3(window_width, window_height, 0.08), front_warm, warm_window_material)
+    _add_window_multimesh(parent, "SideWindows_Dark", Vector3(0.08, window_height, side_window_width), side_dark, dark_window_material)
+    _add_window_multimesh(parent, "SideWindows_Lit", Vector3(0.08, window_height, side_window_width), side_warm, warm_window_material)
+
+func _add_window_multimesh(parent: Node3D, instance_name: String, window_size: Vector3, positions: Array[Vector3], material: Material) -> void:
+    if positions.is_empty():
+        return
+    var window_mesh := BoxMesh.new()
+    window_mesh.size = window_size
+    var instances := MultiMesh.new()
+    instances.transform_format = MultiMesh.TRANSFORM_3D
+    instances.mesh = window_mesh
+    instances.instance_count = positions.size()
+    for i in range(positions.size()):
+        instances.set_instance_transform(i, Transform3D(Basis.IDENTITY, positions[i]))
+    var window_instance := MultiMeshInstance3D.new()
+    window_instance.name = instance_name
+    window_instance.multimesh = instances
+    window_instance.material_override = material
+    parent.add_child(window_instance)
 
 func _add_city_detail() -> void:
     var asphalt := _make_material(Color(0.055, 0.06, 0.07, 1.0), 0.96)
     var sidewalk := _make_material(Color(0.22, 0.22, 0.24, 1.0), 0.9)
-    var stripe := _make_emissive_material(Color(0.95, 0.78, 0.22, 1.0), 0.35)
+    var stripe := _make_material(Color(0.42, 0.37, 0.25, 1.0), 0.86)
     var metal := _make_material(Color(0.09, 0.10, 0.12, 1.0), 0.82)
-    var car_red := _make_material(Color(0.45, 0.05, 0.04, 1.0), 0.68)
-    var car_blue := _make_material(Color(0.04, 0.12, 0.34, 1.0), 0.68)
+    var car_red := _make_material(Color(0.26, 0.085, 0.06, 1.0), 0.82)
+    var car_blue := _make_material(Color(0.10, 0.14, 0.17, 1.0), 0.84)
     var wood := _make_material(Color(0.28, 0.15, 0.07, 1.0), 0.86)
 
     _add_box_prop("MainRoad_NS", Vector3(0, 0.02, 0), Vector3(13.5, 0.08, 270), asphalt)
@@ -378,15 +419,15 @@ func _add_cylinder_prop(name: String, position: Vector3, radius: float, height: 
 
 func _add_street_light(name: String, position: Vector3) -> void:
     var metal := _make_material(Color(0.06, 0.06, 0.07, 1.0), 0.65)
-    var glow := _make_emissive_material(Color(1.0, 0.58, 0.22, 1.0), 2.2)
+    var glow := _make_emissive_material(Color(0.72, 0.52, 0.32, 1.0), 0.72)
     _add_cylinder_prop(name + "_Pole", position + Vector3(0, 2.0, 0), 0.08, 4.0, metal)
     _add_box_prop(name + "_Lamp", position + Vector3(0, 4.08, 0), Vector3(0.75, 0.22, 0.75), glow)
     var light := OmniLight3D.new()
     light.name = name + "_Light"
     light.position = position + Vector3(0, 3.8, 0)
     light.omni_range = 10.5
-    light.light_color = Color(1.0, 0.48, 0.20, 1.0)
-    light.light_energy = 2.6
+    light.light_color = Color(0.70, 0.53, 0.37, 1.0)
+    light.light_energy = 1.2
     add_child(light)
 
 func _add_abandoned_car(name: String, position: Vector3, paint: Material, rotate_sideways: bool) -> void:

@@ -100,14 +100,6 @@ jobs:
           cp godot-templates/templates/* \
             "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
 
-      - name: Install Android Gradle build template
-        shell: bash
-        run: |
-          ./Godot_v${GODOT_VERSION}-stable_linux.x86_64 \
-            --headless \
-            --path . \
-            --install-android-build-template
-
       - name: Configure Godot Android paths
         shell: bash
         run: |
@@ -121,14 +113,16 @@ jobs:
           export/android/android_sdk_path = "${ANDROID_SDK_ROOT}"
           EOF
 
-      - name: Export debug APK
+      - name: Install Android template and export debug APK
         shell: bash
+        timeout-minutes: 30
         run: |
           mkdir -p build/android
 
           ./Godot_v${GODOT_VERSION}-stable_linux.x86_64 \
             --headless \
             --path . \
+            --install-android-build-template \
             --export-debug \
             "Android" \
             build/android/NekoNightfall-debug.apk
