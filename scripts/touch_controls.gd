@@ -1,9 +1,5 @@
 extends CanvasLayer
 
-const TOUCH_BUTTON_NAMES: Array[String] = [
-    "MoveUp", "MoveLeft", "MoveDown", "MoveRight", "Sprint",
-    "Fire", "Reload", "Flashlight", "Shoulder", "View"
-]
 const TOUCH_ACTIONS: Dictionary = {
     "MoveUp": "move_forward",
     "MoveLeft": "move_left",
@@ -15,8 +11,15 @@ const TOUCH_ACTIONS: Dictionary = {
     "Flashlight": "flashlight",
     "Shoulder": "shoulder_swap"
 }
+const TOUCH_BUTTON_NAMES: Array[String] = [
+    "MoveUp", "MoveLeft", "MoveDown", "MoveRight", "Sprint",
+    "Fire", "Reload", "Flashlight", "Shoulder", "View"
+]
 
 var held_actions: Dictionary = {}
+var touch_targets: Dictionary = {}
+var touch_button_counts: Dictionary = {}
+var touch_action_counts: Dictionary = {}
 
 func _ready() -> void:
     _bind_hold("MoveUp", "move_forward")
@@ -39,45 +42,80 @@ func _ready() -> void:
     $Shoulder.pressed.connect(_one_shot.bind("shoulder_swap"))
     $View.pressed.connect(_toggle_view)
     _bind_hold("Sprint", "sprint")
-    if DisplayServer.is_touchscreen_available():
-        # Button controls are retained for their visuals and desktop input. On
-        # touch devices, transparent TouchScreenButtons provide independent
-        # touch tracking so RUN can stay held while another button is tapped.
+    if _is_mobile_input():
+        # Read raw touch IDs ourselves so each finger can independently hold
+        # a control, while keeping the visible Controls as desktop buttons.
         for button_name in TOUCH_BUTTON_NAMES:
             var visual_button: Button = get_node(button_name)
             visual_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-        call_deferred("_create_multitouch_overlays")
 
-func _create_multitouch_overlays() -> void:
+func _is_mobile_input() -> bool:
+    return DisplayServer.is_touchscreen_available() or OS.has_feature("mobile") or OS.has_feature("android") or OS.has_feature("ios")
+
+func _input(event: InputEvent) -> void:
+    if not _is_mobile_input():
+        return
+    if event is InputEventScreenTouch:
+        if event.pressed:
+            _begin_touch(event.index, event.position)
+        else:
+            _end_touch(event.index)
+    elif event is InputEventScreenDrag and touch_targets.has(event.index):
+        get_viewport().set_input_as_handled()
+
+func _begin_touch(pointer_id: int, viewport_position: Vector2) -> void:
+    if touch_targets.has(pointer_id):
+        return
     for button_name in TOUCH_BUTTON_NAMES:
         var visual_button: Button = get_node(button_name)
-        if visual_button.size.x <= 0.0 or visual_button.size.y <= 0.0:
+        var local_position: Vector2 = visual_button.get_global_transform_with_canvas().affine_inverse() * viewport_position
+        if not Rect2(Vector2.ZERO, visual_button.size).has_point(local_position):
             continue
 
-        var hit_button := TouchScreenButton.new()
-        hit_button.name = "Touch_" + button_name
-        # Parent to the visual Control so both inherit the exact same canvas
-        # and stretch transform (important on phones with different aspect ratios).
-        hit_button.position = visual_button.size * 0.5
-        var hit_shape := RectangleShape2D.new()
-        hit_shape.size = visual_button.size
-        hit_button.shape = hit_shape
-        hit_button.shape_visible = false
-        hit_button.visibility_mode = TouchScreenButton.VISIBILITY_TOUCHSCREEN_ONLY
-        hit_button.action = TOUCH_ACTIONS.get(button_name, "")
-        hit_button.pressed.connect(_on_touch_button_pressed.bind(button_name))
-        hit_button.released.connect(_on_touch_button_released.bind(button_name))
-        visual_button.add_child(hit_button)
+        touch_targets[pointer_id] = button_name
+        var button_count: int = int(touch_button_counts.get(button_name, 0)) + 1
+        touch_button_counts[button_name] = button_count
+        visual_button.set_pressed_no_signal(true)
+        var action: String = TOUCH_ACTIONS.get(button_name, "")
+        if not action.is_empty():
+            _press_touch_action(action)
+        elif button_name == "View":
+            _toggle_view()
+        else:
+            _one_shot(button_name.to_lower())
+        get_viewport().set_input_as_handled()
+        return
 
-func _on_touch_button_pressed(button_name: String) -> void:
+func _end_touch(pointer_id: int) -> void:
+    if not touch_targets.has(pointer_id):
+        return
+    var button_name: String = touch_targets[pointer_id]
+    touch_targets.erase(pointer_id)
     var visual_button: Button = get_node(button_name)
-    visual_button.set_pressed_no_signal(true)
-    if button_name == "View":
-        _toggle_view()
+    var button_count: int = int(touch_button_counts.get(button_name, 1)) - 1
+    if button_count <= 0:
+        touch_button_counts.erase(button_name)
+        visual_button.set_pressed_no_signal(false)
+    else:
+        touch_button_counts[button_name] = button_count
+    var action: String = TOUCH_ACTIONS.get(button_name, "")
+    if not action.is_empty():
+        _release_touch_action(action)
+    get_viewport().set_input_as_handled()
 
-func _on_touch_button_released(button_name: String) -> void:
-    var visual_button: Button = get_node(button_name)
-    visual_button.set_pressed_no_signal(false)
+func _press_touch_action(action: String) -> void:
+    var count: int = int(touch_action_counts.get(action, 0))
+    touch_action_counts[action] = count + 1
+    if count == 0:
+        _press(action)
+
+func _release_touch_action(action: String) -> void:
+    var count: int = int(touch_action_counts.get(action, 0)) - 1
+    if count <= 0:
+        touch_action_counts.erase(action)
+        _release(action)
+    else:
+        touch_action_counts[action] = count
 
 func _style_round(button: Button, color: Color) -> void:
     var normal := StyleBoxFlat.new()
