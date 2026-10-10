@@ -192,10 +192,12 @@ func _physics_process(delta: float) -> void:
     var direction := (transform.basis * Vector3(input_vector.x, 0.0, input_vector.y)).normalized()
     var is_sprinting := Input.is_action_pressed("sprint") or mobile_actions.get("sprint", false)
     var speed := sprint_speed if is_sprinting else walk_speed
-    var target_velocity := direction * speed
-    var acceleration := 22.0 if direction.length_squared() > 0.001 else 26.0
-    velocity.x = move_toward(velocity.x, target_velocity.x, acceleration * delta)
-    velocity.z = move_toward(velocity.z, target_velocity.z, acceleration * delta)
+    if direction:
+        velocity.x = direction.x * speed
+        velocity.z = direction.z * speed
+    else:
+        velocity.x = move_toward(velocity.x, 0.0, speed * delta * 6.0)
+        velocity.z = move_toward(velocity.z, 0.0, speed * delta * 6.0)
     move_and_slide()
     var movement_amount := Vector2(velocity.x, velocity.z).length()
     player_model.call("set_moving", movement_amount > 0.15, is_sprinting and movement_amount > 0.15)
