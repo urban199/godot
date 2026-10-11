@@ -4,6 +4,15 @@ var defeated := 0
 var total_enemies := 3
 var won := false
 var lost := false
+var current_season := 0
+var season_names := ["SPRING", "SUMMER", "AUTUMN", "WINTER"]
+var season_descriptions := ["Spring Bloom", "Summer Heat", "Autumn Fall", "Winter Snow"]
+var seasonal_foliage: Array[MeshInstance3D] = []
+var season_particles: CPUParticles3D
+var season_label: Label
+var ground_material: StandardMaterial3D
+var world_environment: WorldEnvironment
+var moon_light: DirectionalLight3D
 @onready var player = $Player
 @onready var objective: Label = $HUD/Objective
 @onready var health_label: Label = $HUD/Health
@@ -19,9 +28,27 @@ func _ready() -> void:
     objective.text = "Objective: survive and reach the exit"
     message.text = ""
     _build_city_district()
+    _build_outer_districts()
+    _setup_seasons()
+    _apply_season(0)
 
 func _process(_delta: float) -> void:
-    if won or lost: return
+    if season_particles and is_instance_valid(player):
+        season_particles.global_position = player.global_position + Vector3(0, 15, 0)
+    if won or lost:
+        if Input.is_action_just_pressed("season_cycle"):
+            _apply_season((current_season + 1) % season_names.size())
+        return
+    if Input.is_action_just_pressed("season_cycle"):
+        _apply_season((current_season + 1) % season_names.size())
+    if Input.is_action_just_pressed("season_spring"):
+        _apply_season(0)
+    elif Input.is_action_just_pressed("season_summer"):
+        _apply_season(1)
+    elif Input.is_action_just_pressed("season_autumn"):
+        _apply_season(2)
+    elif Input.is_action_just_pressed("season_winter"):
+        _apply_season(3)
     if defeated >= total_enemies:
         objective.text = "Objective: the exit is unlocked — reach the blue door"
         exit_door.get_active_material(0).emission_enabled = true
@@ -240,6 +267,193 @@ func _add_city_detail() -> void:
         _add_fence_section("FenceLeft_%d" % z, Vector3(-57, 0, z), 9.0)
         _add_fence_section("FenceRight_%d" % z, Vector3(57, 0, z), 9.0)
 
+func _build_outer_districts() -> void:
+    # Three additional rings: commercial core, residential blocks, industrial outskirts.
+    # Buildings are simple meshes and share materials to keep the scene affordable on low-end PCs.
+    var facades := [
+        Color(0.14, 0.18, 0.25), Color(0.25, 0.16, 0.18), Color(0.13, 0.22, 0.21),
+        Color(0.26, 0.22, 0.16), Color(0.18, 0.15, 0.25), Color(0.22, 0.24, 0.25)
+    ]
+    var materials: Array[Material] = []
+    for c in facades:
+        materials.append(_make_material(c, 0.92))
+    var roof := _make_material(Color(0.045, 0.05, 0.065), 0.98)
+    var road := _make_material(Color(0.035, 0.04, 0.047), 0.98)
+    var sidewalk := _make_material(Color(0.18, 0.18, 0.20), 0.96)
+    # Outer road loops create navigable streets up to the expanded world boundary.
+    for x in [-300.0, -240.0, -180.0, 180.0, 240.0, 300.0]:
+        _add_box_prop("OuterGridRoad_X_%d" % int(x), Vector3(x, 0.015, 0), Vector3(8.0, 0.05, 510), road)
+        _add_box_prop("OuterGridWalk_X_%d" % int(x), Vector3(x + 5.4, 0.04, 0), Vector3(2.0, 0.08, 510), sidewalk)
+    for z in [-225.0, -165.0, -105.0, 105.0, 165.0, 225.0]:
+        _add_box_prop("OuterGridRoad_Z_%d" % int(z), Vector3(0, 0.018, z), Vector3(660, 0.05, 8.0), road)
+        _add_box_prop("OuterGridWalk_Z_%d" % int(z), Vector3(0, 0.04, z + 5.4), Vector3(660, 0.08, 2.0), sidewalk)
+
+    var index := 0
+    for x in range(-3, 4):
+        for z in range(-4, 5):
+            if abs(x) <= 1 and abs(z) <= 1:
+                continue
+            # Roads stay open between blocks; alternate sizes create a less uniform skyline.
+            var px := float(x) * 78.0 + (12.0 if z % 2 == 0 else -12.0)
+            var pz := float(z) * 61.0 + (8.0 if x % 2 == 0 else -8.0)
+            if absf(px) < 185.0 and absf(pz) < 135.0:
+                continue
+            var w := 22.0 + float((index * 7) % 3) * 5.0
+            var d := 20.0 + float((index * 3) % 4) * 3.0
+            var h := 13.0 + float((index * 11) % 9) * 3.5
+            var building := StaticBody3D.new()
+            building.name = "DistrictBuilding_%03d" % index
+            building.position = Vector3(px, h * 0.5, pz)
+            var mesh_instance := MeshInstance3D.new()
+            var box := BoxMesh.new()
+            box.size = Vector3(w, h, d)
+            box.material = materials[index % materials.size()]
+            mesh_instance.mesh = box
+            building.add_child(mesh_instance)
+            _add_child_box(building, "Roof", Vector3(w + 0.8, 0.45, d + 0.8), Vector3(0, h * 0.5 + 0.22, 0), roof)
+            var collision := CollisionShape3D.new()
+            var shape := BoxShape3D.new()
+            shape.size = Vector3(w, h, d)
+            collision.shape = shape
+            building.add_child(collision)
+            add_child(building)
+            _add_window_strip(building, Vector3(w, h, d), index + 2)
+            index += 1
+
+    # Landmark structures make the far districts readable from the central streets.
+    _add_box_prop("Station_Plaza", Vector3(-230, 0.2, 0), Vector3(34, 0.4, 26), _make_material(Color(0.24, 0.25, 0.28), 0.88))
+    _add_box_prop("Industrial_Yard", Vector3(245, 0.18, 170), Vector3(58, 0.36, 48), _make_material(Color(0.12, 0.13, 0.14), 0.95))
+    _add_box_prop("Park_Garden", Vector3(-245, 0.12, -175), Vector3(48, 0.24, 42), _make_material(Color(0.06, 0.14, 0.09), 0.98))
+    for i in range(10):
+        var z := -220.0 + float(i) * 47.0
+        _add_street_light("FarDistrictLamp_%02d" % i, Vector3(-205, 0, z))
+        _add_street_light("FarDistrictLampEast_%02d" % i, Vector3(205, 0, z))
+
+func _setup_seasons() -> void:
+    world_environment = get_node_or_null("WorldEnvironment") as WorldEnvironment
+    moon_light = get_node_or_null("MoonLight") as DirectionalLight3D
+    var floor_mesh := get_node_or_null("FloorBody/Floor") as MeshInstance3D
+    if floor_mesh:
+        ground_material = _make_material(Color(0.16, 0.18, 0.22), 0.92)
+        floor_mesh.material_override = ground_material
+    # A single low-cost CPU particle emitter changes its shape and color by season.
+    season_particles = CPUParticles3D.new()
+    season_particles.name = "SeasonWeatherParticles"
+    season_particles.amount = 260
+    season_particles.lifetime = 5.0
+    season_particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+    season_particles.emission_box_extents = Vector3(105, 24, 105)
+    season_particles.position = Vector3(0, 15, 0)
+    season_particles.direction = Vector3(0, -1, 0)
+    season_particles.spread = 12.0
+    season_particles.gravity = Vector3(0, -5.5, 0)
+    season_particles.initial_velocity_min = 2.0
+    season_particles.initial_velocity_max = 5.5
+    season_particles.emitting = false
+    var particle_mesh := QuadMesh.new()
+    particle_mesh.size = Vector2(0.06, 0.34)
+    var particle_material := StandardMaterial3D.new()
+    particle_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    particle_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    particle_material.albedo_color = Color(0.7, 0.85, 1.0, 0.8)
+    particle_mesh.material = particle_material
+    season_particles.mesh = particle_mesh
+    add_child(season_particles)
+    season_label = Label.new()
+    season_label.name = "SeasonLabel"
+    season_label.position = Vector2(18, 158)
+    season_label.add_theme_font_size_override("font_size", 18)
+    season_label.add_theme_color_override("font_color", Color(0.76, 0.9, 1.0))
+    var hud := get_node_or_null("HUD") as CanvasLayer
+    if hud:
+        hud.add_child(season_label)
+
+func _apply_season(index: int) -> void:
+    current_season = posmod(index, season_names.size())
+    var tint: Color
+    var ambient: Color
+    var fog: Color
+    var ground: Color
+    var light_color: Color
+    var light_energy := 0.58
+    var weather_color: Color
+    var foliage_tint: Color
+    var weather_on := true
+    match current_season:
+        0: # Spring — blossoms and soft rain
+            tint = Color(0.72, 0.84, 0.78)
+            ambient = Color(0.50, 0.58, 0.62)
+            fog = Color(0.28, 0.39, 0.44)
+            ground = Color(0.19, 0.23, 0.20)
+            light_color = Color(0.72, 0.82, 1.0)
+            weather_color = Color(0.66, 0.84, 1.0, 0.75)
+            foliage_tint = Color(0.78, 1.0, 0.80)
+        1: # Summer — warm and clear
+            tint = Color(1.0, 0.91, 0.74)
+            ambient = Color(0.62, 0.55, 0.43)
+            fog = Color(0.30, 0.29, 0.27)
+            ground = Color(0.24, 0.22, 0.17)
+            light_color = Color(1.0, 0.82, 0.62)
+            weather_color = Color(1.0, 0.83, 0.50, 0.75)
+            foliage_tint = Color(0.88, 1.0, 0.66)
+            weather_on = false
+            light_energy = 0.85
+        2: # Autumn — amber leaves
+            tint = Color(0.91, 0.67, 0.46)
+            ambient = Color(0.55, 0.40, 0.34)
+            fog = Color(0.38, 0.22, 0.18)
+            ground = Color(0.24, 0.17, 0.12)
+            light_color = Color(1.0, 0.60, 0.35)
+            weather_color = Color(1.0, 0.34, 0.08, 0.85)
+            foliage_tint = Color(1.0, 0.47, 0.18)
+        3: # Winter — cold mist and snow
+            tint = Color(0.56, 0.68, 0.84)
+            ambient = Color(0.37, 0.46, 0.65)
+            fog = Color(0.23, 0.30, 0.42)
+            ground = Color(0.48, 0.53, 0.60)
+            light_color = Color(0.52, 0.68, 1.0)
+            weather_color = Color(0.92, 0.96, 1.0, 0.95)
+            foliage_tint = Color(0.68, 0.76, 0.88)
+    if world_environment and world_environment.environment:
+        var env := world_environment.environment
+        env.background_color = fog.darkened(0.72)
+        env.ambient_light_color = ambient
+        env.ambient_light_energy = 0.58 if current_season != 1 else 0.78
+        env.fog_light_color = fog
+        env.fog_density = 0.0045 if current_season == 1 else 0.008
+    if moon_light:
+        moon_light.light_color = light_color
+        moon_light.light_energy = light_energy
+    if ground_material:
+        ground_material.albedo_color = ground
+    for foliage in seasonal_foliage:
+        if is_instance_valid(foliage) and foliage.mesh and foliage.mesh.get_surface_count() > 0:
+            var foliage_material := foliage.mesh.surface_get_material(0) as StandardMaterial3D
+            if foliage_material:
+                foliage_material.albedo_color = foliage_tint
+    if season_particles:
+        season_particles.direction = Vector3(0.05, -1.0, 0.0)
+        season_particles.spread = 14.0
+        season_particles.gravity = Vector3(0, -4.5 if current_season == 3 else -7.0, 0)
+        season_particles.initial_velocity_min = 1.5 if current_season == 3 else 5.0
+        season_particles.initial_velocity_max = 3.5 if current_season == 3 else 9.0
+        season_particles.color = weather_color
+        if current_season == 2:
+            season_particles.gravity = Vector3(1.8, -1.0, 0.8)
+            season_particles.initial_velocity_min = 0.8
+            season_particles.initial_velocity_max = 2.2
+        var quad := QuadMesh.new()
+        quad.size = Vector2(0.045, 0.28) if current_season != 2 else Vector2(0.14, 0.08)
+        var mat := StandardMaterial3D.new()
+        mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+        mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+        mat.albedo_color = weather_color
+        quad.material = mat
+        season_particles.mesh = quad
+        season_particles.emitting = weather_on or current_season != 1
+    if season_label:
+        season_label.text = "SEASON: %s  |  Q: cycle seasons  |  1-4: select" % season_names[current_season]
+
 func _make_material(color: Color, roughness: float) -> StandardMaterial3D:
     var material := StandardMaterial3D.new()
     material.albedo_color = color
@@ -299,9 +513,12 @@ func _add_procedural_tree(name: String, position: Vector3, scale: float) -> void
         _make_material(Color(0.075, 0.21, 0.16, 1.0), 0.98),
         _make_material(Color(0.11, 0.24, 0.18, 1.0), 0.98)
     ]
-    _add_child_ellipsoid(tree, "CanopyCore", Vector3(0, trunk_height + 0.6 * scale, 0), Vector3(2.35, 2.0, 2.25) * scale, foliage[0])
-    _add_child_ellipsoid(tree, "CanopyLeft", Vector3(-0.72 * scale, trunk_height + 0.1 * scale, 0.12 * scale), Vector3(1.55, 1.45, 1.6) * scale, foliage[1])
-    _add_child_ellipsoid(tree, "CanopyRight", Vector3(0.68 * scale, trunk_height + 0.15 * scale, -0.08 * scale), Vector3(1.6, 1.55, 1.65) * scale, foliage[2])
+    var canopy_core := _add_child_ellipsoid(tree, "CanopyCore", Vector3(0, trunk_height + 0.6 * scale, 0), Vector3(2.35, 2.0, 2.25) * scale, foliage[0])
+    var canopy_left := _add_child_ellipsoid(tree, "CanopyLeft", Vector3(-0.72 * scale, trunk_height + 0.1 * scale, 0.12 * scale), Vector3(1.55, 1.45, 1.6) * scale, foliage[1])
+    var canopy_right := _add_child_ellipsoid(tree, "CanopyRight", Vector3(0.68 * scale, trunk_height + 0.15 * scale, -0.08 * scale), Vector3(1.6, 1.55, 1.65) * scale, foliage[2])
+    for canopy in [canopy_core, canopy_left, canopy_right]:
+        canopy.add_to_group("seasonal_foliage")
+        seasonal_foliage.append(canopy)
     var trunk_collision := CollisionShape3D.new()
     var trunk_shape := CapsuleShape3D.new()
     trunk_shape.radius = 0.34 * scale

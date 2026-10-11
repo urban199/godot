@@ -1,5 +1,7 @@
-# Rigged character status
+# Rigged Anime Character Upgrade
 
-The Character Studio export has been upgraded to bake mesh transforms into a consistent character-local space, create a shared humanoid skeleton, generate normalized approximate skin weights, and export six animation clips: Idle, Walk, Run, Aim, Shoot, and Death.
+The hero GLB was replaced with a custom generated skinned humanoid asset. It contains a named humanoid skeleton, JOINTS_0 / WEIGHTS_0 vertex skinning, and embedded animation clips: Idle, Walk, Run, Aim, Shoot, Reload, Hit, Death. Mesh geometry is smooth shaded and uses vertex-color materials for a black/red gothic anime direction.
 
-**Known limitation:** the mesh is still a stylized parametric base assembled from primitive geometry. The rig and weights are generated heuristically, not manually painted/production-quality. Browser GLB export and Godot import/deformation still require end-to-end visual verification. See `character-studio/RIG_SKINNING_EXPORT_NOTES.md` for the test checklist.
+This is a custom stylized game-ready prototype rather than a hand-sculpted commercial AAA/Genshin-quality asset. Face, hair and outfit are geometric stylization; animation clips are procedural keyframed motions authored for this mesh. Inspect in Godot 4.5.1 and test the gameplay actions before publishing.
+
+The Web renderer remains Compatibility and the existing Web export preset is retained. GitHub Pages deployment requires the repository Pages source to be set to GitHub Actions.

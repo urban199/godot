@@ -28,3 +28,9 @@ fire={"deadzone":0.5,"events":[Object(InputEventMouseButton,"button_index":1)]}
 reload={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":82)]}
 flashlight={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":70)]}
 interact={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":69)]}
+
+season_cycle={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":81)]}
+season_spring={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":49)]}
+season_summer={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":50)]}
+season_autumn={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":51)]}
+season_winter={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":52)]}

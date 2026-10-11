@@ -23,24 +23,24 @@ fog_density = 0.008
 albedo_color = Color(0.16, 0.18, 0.22, 1)
 roughness = 0.92
 [sub_resource type="BoxMesh" id="Floor_mesh"]
-size = Vector3(360, 0.2, 270)
+size = Vector3(720, 0.2, 540)
 material = SubResource("Floor_material")
 [sub_resource type="BoxShape3D" id="Floor_shape"]
-size = Vector3(360, 0.2, 270)
+size = Vector3(720, 0.2, 540)
 
 [sub_resource type="StandardMaterial3D" id="Wall_material"]
 albedo_color = Color(0.18, 0.17, 0.2, 1)
 roughness = 0.8
 [sub_resource type="BoxMesh" id="Wall_long_mesh"]
-size = Vector3(360, 3.2, 0.35)
+size = Vector3(720, 3.2, 0.35)
 material = SubResource("Wall_material")
 [sub_resource type="BoxMesh" id="Wall_side_mesh"]
-size = Vector3(0.35, 3.2, 270)
+size = Vector3(0.35, 3.2, 540)
 material = SubResource("Wall_material")
 [sub_resource type="BoxShape3D" id="Wall_long_shape"]
-size = Vector3(360, 3.2, 0.35)
+size = Vector3(720, 3.2, 0.35)
 [sub_resource type="BoxShape3D" id="Wall_side_shape"]
-size = Vector3(0.35, 3.2, 270)
+size = Vector3(0.35, 3.2, 540)
 
 [sub_resource type="StandardMaterial3D" id="Player_material"]
 albedo_color = Color(0.2, 0.5, 0.78, 1)
@@ -150,25 +150,25 @@ position = Vector3(0, -0.1, 0)
 shape = SubResource("Floor_shape")
 
 [node name="NorthWall" type="StaticBody3D" parent="."]
-position = Vector3(0, 1.6, -135)
+position = Vector3(0, 1.6, -270)
 [node name="Mesh" type="MeshInstance3D" parent="NorthWall"]
 mesh = SubResource("Wall_long_mesh")
 [node name="Collision" type="CollisionShape3D" parent="NorthWall"]
 shape = SubResource("Wall_long_shape")
 [node name="SouthWall" type="StaticBody3D" parent="."]
-position = Vector3(0, 1.6, 135)
+position = Vector3(0, 1.6, 270)
 [node name="Mesh" type="MeshInstance3D" parent="SouthWall"]
 mesh = SubResource("Wall_long_mesh")
 [node name="Collision" type="CollisionShape3D" parent="SouthWall"]
 shape = SubResource("Wall_long_shape")
 [node name="WestWall" type="StaticBody3D" parent="."]
-position = Vector3(-180, 1.6, 0)
+position = Vector3(-360, 1.6, 0)
 [node name="Mesh" type="MeshInstance3D" parent="WestWall"]
 mesh = SubResource("Wall_side_mesh")
 [node name="Collision" type="CollisionShape3D" parent="WestWall"]
 shape = SubResource("Wall_side_shape")
 [node name="EastWall" type="StaticBody3D" parent="."]
-position = Vector3(180, 1.6, 0)
+position = Vector3(360, 1.6, 0)
 [node name="Mesh" type="MeshInstance3D" parent="EastWall"]
 mesh = SubResource("Wall_side_mesh")
 [node name="Collision" type="CollisionShape3D" parent="EastWall"]
