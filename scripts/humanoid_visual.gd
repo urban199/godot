@@ -24,12 +24,11 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visual_root = Node3D.new()
 	visual_root.name = "ImportedSurvivor" if role == "survivor" else "OriginalCharacter"
-	# The GLB was authored Z-up, while Godot uses Y-up. Rotate its wrapper upright
-	# and face it toward the controller's -Z forward direction.
+	# Keep the imported character upright in the GLB's Y-up coordinate system.
 	visual_root.scale = Vector3.ONE if role == "survivor" else Vector3.ONE * 0.85
-	visual_root.position.y = -0.72 if role == "survivor" else -0.74
-	if role == "survivor":
-		visual_root.rotation = Vector3(-PI * 0.5, PI, 0.0)
+	# The current rigged GLB is authored in glTF's Y-up coordinates. Its feet
+	# sit near y=0, so align them with the floor relative to the player capsule.
+	visual_root.position.y = -0.86 if role == "survivor" else -0.74
 	visual_home_y = visual_root.position.y
 	add_child(visual_root)
 	if role == "survivor":
