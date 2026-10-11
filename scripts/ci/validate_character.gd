@@ -32,8 +32,9 @@ func _run_validation() -> void:
     else:
         if mesh_instance.mesh.get_surface_count() == 0:
             _fail("Imported character mesh has no surfaces.")
-        if mesh_instance.mesh.get_aabb().size.length() < 0.5:
-            _fail("Imported character mesh bounds are empty or implausibly small.")
+        var character_bounds := _combined_mesh_bounds(character_root)
+        if character_bounds.size.length() < 0.5:
+            _fail("Combined imported character mesh bounds are empty or implausibly small: %s." % character_bounds.size)
         if mesh_instance.skin == null:
             _fail("Imported character mesh has no Skin resource; it is not skinned.")
         else:
@@ -101,12 +102,14 @@ func _run_validation() -> void:
                 _fail("Main scene has no player gameplay node for damage animation testing.")
             else:
                 player.call("take_damage", 1)
-            if player_animation_player == null or not String(player_animation_player.current_animation).to_lower().ends_with("hit"):
-                _fail("Gameplay Hit event did not start the imported Hit clip.")
-            if player != null:
+                if player_animation_player == null or not String(player_animation_player.current_animation).to_lower().ends_with("hit"):
+                    _fail("Gameplay Hit event did not start the imported Hit clip.")
+                # Player damage intentionally has a short invulnerability window.
+                # Wait it out before asking the gameplay API to apply lethal damage.
+                await create_timer(0.7).timeout
                 player.call("take_damage", 999)
-            if player_animation_player == null or not String(player_animation_player.current_animation).to_lower().ends_with("death"):
-                _fail("Lethal gameplay damage did not start the imported Death clip.")
+                if player_animation_player == null or not String(player_animation_player.current_animation).to_lower().ends_with("death"):
+                    _fail("Lethal gameplay damage did not start the imported Death clip.")
 
     _finish()
 
@@ -148,6 +151,38 @@ func _find_node_of_type(current: Node, wanted_type: Variant) -> Node:
         if found != null:
             return found
     return null
+
+func _combined_mesh_bounds(character_root: Node3D) -> AABB:
+    var meshes: Array[MeshInstance3D] = []
+    _collect_mesh_instances(character_root, meshes)
+    var combined_bounds := AABB()
+    var has_bounds := false
+    var root_inverse := character_root.global_transform.affine_inverse()
+    var local_corners: Array[Vector3] = [
+        Vector3.ZERO,
+        Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1),
+        Vector3(1, 1, 0), Vector3(1, 0, 1), Vector3(0, 1, 1), Vector3.ONE,
+    ]
+    for mesh_instance in meshes:
+        if mesh_instance.mesh == null:
+            continue
+        var local_bounds: AABB = mesh_instance.mesh.get_aabb()
+        var relative_transform: Transform3D = root_inverse * mesh_instance.global_transform
+        for unit_corner in local_corners:
+            var local_corner: Vector3 = local_bounds.position + local_bounds.size * unit_corner
+            var character_corner: Vector3 = relative_transform * local_corner
+            if has_bounds:
+                combined_bounds = combined_bounds.expand(character_corner)
+            else:
+                combined_bounds = AABB(character_corner, Vector3.ZERO)
+                has_bounds = true
+    return combined_bounds
+
+func _collect_mesh_instances(current: Node, result: Array[MeshInstance3D]) -> void:
+    if current is MeshInstance3D:
+        result.append(current as MeshInstance3D)
+    for child in current.get_children():
+        _collect_mesh_instances(child, result)
 
 func _find_node_named(current: Node, wanted_name: String) -> Node:
     if current.name == wanted_name:
