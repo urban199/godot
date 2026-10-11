@@ -8,6 +8,7 @@ var animation_time := 0.0
 var action_time := 0.0
 var dying := false
 var visual_root: Node3D
+var imported_model: Node3D
 var visual_home_y := 0.0
 var torso: Node3D
 var head: Node3D
@@ -19,16 +20,27 @@ var right_leg: Node3D
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visual_root = Node3D.new()
-	visual_root.name = "OriginalCharacter"
-	# CharacterBody origins are centered in their capsule; lower the art to the floor.
-	visual_root.scale = Vector3.ONE * (0.78 if role == "survivor" else 0.85)
-	visual_root.position.y = -0.18 if role == "survivor" else -0.74
+	visual_root.name = "ImportedSurvivor" if role == "survivor" else "OriginalCharacter"
+	# The GLB was authored Z-up, while Godot uses Y-up. Rotate its wrapper upright
+	# and face it toward the controller's -Z forward direction.
+	visual_root.scale = Vector3.ONE if role == "survivor" else Vector3.ONE * 0.85
+	visual_root.position.y = -0.72 if role == "survivor" else -0.74
+	if role == "survivor":
+		visual_root.rotation = Vector3(-PI * 0.5, PI, 0.0)
 	visual_home_y = visual_root.position.y
 	add_child(visual_root)
 	if role == "survivor":
-		torso = visual_root
-		head = visual_root
-		_build_survivor()
+		var model_scene := load("res://assets/characters/player/nightfall_survivor/model/neko_nightfall_anime_survivor_A.glb") as PackedScene
+		if model_scene:
+			imported_model = model_scene.instantiate() as Node3D
+			if imported_model:
+				imported_model.name = "NekoNightfallAnime3D_A"
+				visual_root.add_child(imported_model)
+				_hide_duplicate_imported_pistol(imported_model)
+			else:
+				push_error("Neko Nightfall GLB root is not a Node3D.")
+		else:
+			push_error("Could not load Neko Nightfall character GLB.")
 	else:
 		_build_zombie()
 
@@ -37,7 +49,7 @@ func set_moving(value: bool, is_sprinting := false) -> void:
 	sprinting = is_sprinting
 
 func uses_imported_model() -> bool:
-	return false
+	return is_instance_valid(imported_model)
 
 func play_action(animation_name: StringName, _return_to_locomotion := true) -> float:
 	if animation_name == &"die":
@@ -53,6 +65,11 @@ func _process(delta: float) -> void:
 		return
 	action_time = maxf(action_time - delta, 0.0)
 	animation_time += delta * (10.0 if sprinting else 7.0 if moving else 1.7)
+	if is_instance_valid(imported_model):
+		# This asset has no skeleton or clips; use a subtle whole-model idle/move
+		# bob without pretending its limbs are animated.
+		visual_root.position.y = visual_home_y + sin(animation_time * 2.0) * (0.018 if moving else 0.006)
+		return
 	var stride := 0.52 if sprinting else 0.38 if moving else 0.025
 	left_leg.rotation.x = sin(animation_time) * stride
 	right_leg.rotation.x = sin(animation_time + PI) * stride
@@ -71,6 +88,16 @@ func _process(delta: float) -> void:
 		visual_root.position.y = visual_home_y + sin(animation_time * 2.0) * (0.018 if moving else 0.006)
 		torso.rotation.z = sin(animation_time * 0.5) * (0.035 if moving else 0.012)
 		head.rotation.y = sin(animation_time * 0.35) * 0.035
+
+func _hide_duplicate_imported_pistol(root: Node) -> void:
+	# The project already attaches its functional weapon to PlayerModel.
+	# Hide only the GLB's separate decorative pistol mesh; retain the holster.
+	for child in root.get_children():
+		if child is MeshInstance3D:
+			var mesh_child := child as MeshInstance3D
+			if mesh_child.name in ["Pistol_Slide", "Pistol_Grip", "Pistol_Muzzle"]:
+				mesh_child.visible = false
+		_hide_duplicate_imported_pistol(child)
 
 func _toon(color: Color, roughness := 0.72, metallic := 0.0) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
