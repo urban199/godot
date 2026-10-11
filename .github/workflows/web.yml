@@ -15,9 +15,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Node for deterministic GLB check
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Download pinned Godot and export templates
         shell: bash
         run: |
+          set -euo pipefail
+          mkdir -p logs build/web
           curl --fail --location --output godot.zip \
             "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
           curl --fail --location --output templates.tpz \
@@ -28,14 +35,29 @@ jobs:
           unzip -q templates.tpz -d templates
           cp templates/templates/* "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
 
-      - name: Export Web
+      - name: Import resources and validate character/gameplay
+        shell: bash
         run: |
-          mkdir -p build/web
-          ./"Godot_v${GODOT_VERSION}-stable_linux.x86_64" --headless --path . --editor --quit
-          ./"Godot_v${GODOT_VERSION}-stable_linux.x86_64" --headless --path . --export-release Web build/web/index.html
+          set -euo pipefail
+          node tools/characters/extend_neko_animations.js --verify
+          GODOT="./Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          "$GODOT" --headless --editor --path . --import 2>&1 | tee logs/import.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/import.log; then exit 1; fi
+          "$GODOT" --headless --path . --script res://scripts/ci/validate_character.gd 2>&1 | tee logs/character-validation.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/character-validation.log; then exit 1; fi
+
+      - name: Export Web Preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./"Godot_v${GODOT_VERSION}-stable_linux.x86_64" --headless --path . --export-release Web build/web/index.html 2>&1 | tee logs/web-export.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/web-export.log; then exit 1; fi
 
       - name: Upload Web artifact
         uses: actions/upload-artifact@v4
         with:
           name: neko-godot-web-${{ github.sha }}
-          path: build/web
+          path: |
+            build/web/
+            logs/
+          if-no-files-found: error

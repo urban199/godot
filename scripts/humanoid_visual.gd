@@ -10,9 +10,12 @@ var dying := false
 var visual_root: Node3D
 var imported_model: Node3D
 var imported_animation_player: AnimationPlayer
+var imported_skeleton: Skeleton3D
+var weapon_socket: BoneAttachment3D
 var visual_home_y := 0.0
 var imported_action := ""
 var imported_action_serial := 0
+var aiming := false
 var torso: Node3D
 var head: Node3D
 var left_arm: Node3D
@@ -32,7 +35,7 @@ func _ready() -> void:
 	visual_home_y = visual_root.position.y
 	add_child(visual_root)
 	if role == "survivor":
-		var model_scene := load("res://assets/characters/player/neko_nightfall_character_full/models/neko_nightfall_rigged.glb") as PackedScene
+		var model_scene := load("res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_rigged.glb") as PackedScene
 		if model_scene:
 			imported_model = model_scene.instantiate() as Node3D
 			if imported_model:
@@ -41,6 +44,8 @@ func _ready() -> void:
 				var character_mesh := _find_character_mesh(imported_model)
 				var character_skeleton := _find_character_skeleton(imported_model)
 				if character_mesh and character_skeleton:
+					imported_skeleton = character_skeleton
+					weapon_socket = _create_weapon_socket(character_skeleton)
 					_prepare_imported_visual(imported_model)
 					imported_animation_player = _find_animation_player(imported_model)
 					if imported_animation_player:
@@ -63,31 +68,46 @@ func set_moving(value: bool, is_sprinting := false) -> void:
 	moving = value
 	sprinting = is_sprinting
 	if is_instance_valid(imported_animation_player) and imported_action.is_empty():
-		var wanted_clip := "Run" if moving and sprinting else "Walk" if moving else "Idle"
-		_play_imported_clip(wanted_clip)
+		_update_imported_locomotion()
+
+func set_aiming(value: bool) -> void:
+	if aiming == value:
+		return
+	aiming = value
+	if is_instance_valid(imported_animation_player) and imported_action.is_empty():
+		_update_imported_locomotion()
+
+func get_weapon_socket() -> Node3D:
+	return weapon_socket if is_instance_valid(weapon_socket) else null
 
 func uses_imported_model() -> bool:
 	return is_instance_valid(imported_model)
 
-func play_action(animation_name: StringName, _return_to_locomotion := true) -> float:
+func play_action(animation_name: StringName, return_to_locomotion := true) -> float:
 	if is_instance_valid(imported_animation_player):
 		var requested := String(animation_name).to_lower()
-		var imported_clip := "Shoot" if "shoot" in requested else "Reload" if "reload" in requested else "Aim" if "aim" in requested else ""
+		var imported_clip := "Shoot" if "shoot" in requested else "Reload" if "reload" in requested else "Aim" if "aim" in requested else "Hit" if "hit" in requested else "Death" if "death" in requested or requested == "die" else ""
 		if not imported_clip.is_empty():
 			var duration := _play_imported_clip(imported_clip)
 			if duration > 0.0:
 				imported_action = imported_clip
 				imported_action_serial += 1
 				var action_serial := imported_action_serial
-				get_tree().create_timer(duration).timeout.connect(func() -> void:
-					if imported_action_serial == action_serial:
-						imported_action = ""
-						_update_imported_locomotion()
-				)
+				if imported_clip == "Death":
+					dying = true
+				elif return_to_locomotion:
+					get_tree().create_timer(duration).timeout.connect(func() -> void:
+						if imported_action_serial == action_serial:
+							imported_action = ""
+							_update_imported_locomotion()
+					)
 				return duration
-	if animation_name == &"die":
+	if animation_name == &"die" or animation_name == &"Death":
 		dying = true
-		return 0.7
+		return 2.1
+	if animation_name == &"Hit":
+		action_time = 0.58
+		return action_time
 	if animation_name == &"holding-both-shoot":
 		action_time = 0.24
 		return action_time
@@ -149,6 +169,17 @@ func _find_character_skeleton(root: Node) -> Skeleton3D:
 			return found
 	return null
 
+func _create_weapon_socket(skeleton: Skeleton3D) -> BoneAttachment3D:
+	var hand_index := skeleton.find_bone("Hand_R")
+	if hand_index < 0:
+		push_warning("Neko Nightfall rig has no Hand_R bone; keeping the weapon on the player model.")
+		return null
+	var socket := BoneAttachment3D.new()
+	socket.name = "WeaponSocket"
+	skeleton.add_child(socket)
+	socket.bone_name = skeleton.get_bone_name(hand_index)
+	return socket
+
 func _prepare_imported_visual(root: Node) -> void:
 	if root is Node3D:
 		(root as Node3D).visible = true
@@ -172,6 +203,8 @@ func _use_procedural_survivor() -> void:
 		imported_model.queue_free()
 	imported_model = null
 	imported_animation_player = null
+	imported_skeleton = null
+	weapon_socket = null
 	visual_root.position.y = -0.18
 	visual_home_y = visual_root.position.y
 	_build_survivor()
@@ -182,16 +215,19 @@ func _play_imported_clip(wanted: String) -> float:
 	for clip in imported_animation_player.get_animation_list():
 		var clip_name := String(clip)
 		if clip_name.to_lower() == wanted.to_lower() or clip_name.to_lower().ends_with("/" + wanted.to_lower()):
+			var animation: Animation = imported_animation_player.get_animation(clip_name)
+			if animation:
+				animation.loop_mode = Animation.LOOP_LINEAR if wanted.to_lower() in ["idle", "walk", "run", "aim"] else Animation.LOOP_NONE
 			if imported_animation_player.current_animation != clip_name:
-				imported_animation_player.play(clip_name)
-			var animation := imported_animation_player.get_animation(clip_name)
+				var blend_time: float = 0.14 if wanted.to_lower() in ["idle", "walk", "run", "aim"] else 0.06
+				imported_animation_player.play(clip_name, blend_time)
 			return animation.length if animation else 0.0
 	return 0.0
 
 func _update_imported_locomotion() -> void:
 	if not is_instance_valid(imported_animation_player) or not imported_action.is_empty():
 		return
-	var wanted_clip := "Run" if moving and sprinting else "Walk" if moving else "Idle"
+	var wanted_clip := "Aim" if aiming else "Run" if moving and sprinting else "Walk" if moving else "Idle"
 	_play_imported_clip(wanted_clip)
 
 func _toon(color: Color, roughness := 0.72, metallic := 0.0) -> StandardMaterial3D:

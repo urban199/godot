@@ -45,17 +45,30 @@ var first_person_arms: Node3D
 @onready var weapon_view: Node3D = $PlayerModel/WeaponView
 var weapon_home_position := Vector3.ZERO
 var weapon_base_position := Vector3.ZERO
+var weapon_home_rotation := Vector3.ZERO
+var weapon_home_parent: Node3D
+var is_dead := false
 
 func _ready() -> void:
     add_to_group("player")
     player_model.visible = true
     health = max_health
-    weapon_home_position = weapon_view.position
+    weapon_home_parent = player_model.call("get_weapon_socket") as Node3D
+    if not weapon_home_parent:
+        weapon_home_parent = player_model
+        weapon_home_position = weapon_view.position
+    else:
+        weapon_home_position = Vector3(0.0, 0.18, -0.13)
+        weapon_view.reparent(weapon_home_parent, false)
+        weapon_view.position = weapon_home_position
+    weapon_home_rotation = weapon_view.rotation
     weapon_base_position = weapon_home_position
     weapon_home_scale = weapon_view.scale
     camera_pivot_home_position = camera_pivot.position
     camera_arm_home_length = camera_distance
     model_home_position = player_model.position
+    muzzle.reparent(weapon_view, false)
+    muzzle.position = Vector3(0.0, 0.08, -0.55)
     camera_yaw = rotation.y
     camera_pivot.rotation.x = pitch
     camera_arm.position.x = camera_side_offset * shoulder_side
@@ -87,10 +100,10 @@ func toggle_camera_view() -> bool:
         camera.fov = 76.0
     else:
         first_person_arms.visible = false
-        weapon_view.reparent(player_model, false)
+        weapon_view.reparent(weapon_home_parent, false)
         weapon_base_position = weapon_home_position
         weapon_view.position = weapon_base_position
-        weapon_view.rotation = Vector3.ZERO
+        weapon_view.rotation = weapon_home_rotation
         weapon_view.scale = weapon_home_scale
         player_model.visible = true
         camera_pivot.position = camera_pivot_home_position
@@ -166,6 +179,8 @@ func _unhandled_input(event: InputEvent) -> void:
         Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
 
 func _physics_process(delta: float) -> void:
+    if is_dead:
+        return
     weapon_recoil = move_toward(weapon_recoil, 0.0, delta * 0.9)
     reload_animation = move_toward(reload_animation, 0.0, delta * 2.4)
     weapon_view.position = weapon_base_position + Vector3(0, reload_animation * 0.08, weapon_recoil * 0.35)
@@ -203,6 +218,7 @@ func _physics_process(delta: float) -> void:
     move_and_slide()
     var movement_amount := Vector2(velocity.x, velocity.z).length()
     player_model.call("set_moving", movement_amount > 0.15, is_sprinting and movement_amount > 0.15)
+    player_model.call("set_aiming", Input.is_action_pressed("aim"))
     if not player_model.call("uses_imported_model"):
         if movement_amount > 0.15:
             walk_time += delta * 9.0
@@ -228,7 +244,7 @@ func shoot() -> void:
     ammo_changed.emit(ammo, reserve_ammo)
     fired.emit()
     weapon_view.call("fire_effect")
-    player_model.call("play_action", "holding-both-shoot")
+    player_model.call("play_action", "Shoot")
     var aim_start := camera.global_position
     var aim_end := aim_start + -camera.global_transform.basis.z * aim_ray_distance
     var aim_query := PhysicsRayQueryParameters3D.create(aim_start, aim_end)
@@ -254,9 +270,17 @@ func reload_weapon() -> void:
     ammo_changed.emit(ammo, reserve_ammo)
 
 func take_damage(amount: int) -> void:
+    if is_dead or amount <= 0:
+        return
     health = max(health - amount, 0)
     health_changed.emit(health)
-    if health == 0: get_tree().call_group("game", "player_died")
+    if health == 0:
+        is_dead = true
+        velocity = Vector3.ZERO
+        player_model.call("play_action", "Death", false)
+        get_tree().call_group("game", "player_died")
+    else:
+        player_model.call("play_action", "Hit")
 
 func collect_ammo(amount: int) -> void:
     reserve_ammo += amount
