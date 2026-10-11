@@ -1,0 +1,22 @@
+{
+  "project": "Neko Nightfall Anime Character Builder",
+  "target": "GitHub Pages",
+  "entry": "character-studio/index.html",
+  "workflow": ".github/workflows/character-studio-pages.yml",
+  "features": [
+    "parametric smooth-shaded anime model",
+    "hair styles",
+    "color controls",
+    "proportion sliders",
+    "outfit styles",
+    "lighting/background controls",
+    "PNG screenshot",
+    "JSON preset export",
+    "static GLB export"
+  ],
+  "limitations": [
+    "not professional sculpting",
+    "GLB export is static geometry, no skeleton or skin weights",
+    "requires internet for Three.js CDN"
+  ]
+}

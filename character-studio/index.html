@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Neko Nightfall — Anime Character Builder</title>
+<style>
+:root{--bg:#080a12;--panel:#121725;--panel2:#0d1220;--line:#29344b;--pink:#ff4f83;--cyan:#63d9ff;--text:#f1f4ff;--muted:#9caac4}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0%,#20223a 0,#080a12 58%);color:var(--text);font:14px/1.45 system-ui,Segoe UI,sans-serif}
+header{height:68px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 20px;border-bottom:1px solid var(--line);background:#080a12eF;position:sticky;top:0;z-index:3}
+.brand{font-weight:900;letter-spacing:.08em;font-size:17px}.brand span{color:var(--pink)}.sub{font-size:11px;color:var(--muted)}.header-actions{display:flex;gap:8px;align-items:center}
+button,select,input{font:inherit}button{cursor:pointer;border:1px solid #35415c;background:#171e2f;color:var(--text);border-radius:8px;padding:9px 12px;font-weight:650}button:hover{filter:brightness(1.15)}button.primary{background:linear-gradient(135deg,#c02d60,#752c8e);border-color:#ff7199}button.cyan{border-color:#347d94;color:#a9efff}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:14px;padding:14px;max-width:1700px;margin:auto}
+.stage-wrap{position:relative;min-height:calc(100vh - 100px);height:calc(100vh - 100px);max-height:1000px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0d1220}
+#stage{position:absolute;inset:0}#stage canvas{width:100%;height:100%;display:block}
+.stage-top{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;pointer-events:none;gap:10px}.pill{background:#090d18c9;border:1px solid #303a51;border-radius:9px;padding:8px 10px;font-size:11px;color:#d7e0f5;backdrop-filter:blur(8px)}
+.stage-bottom{position:absolute;bottom:14px;left:14px;display:flex;gap:8px;flex-wrap:wrap}.panel{height:calc(100vh - 100px);max-height:1000px;overflow:auto;background:linear-gradient(160deg,#151c2b,#0b101a);border:1px solid var(--line);border-radius:14px;padding:14px}
+h1,h2,h3,p{margin-top:0}h2{font-size:14px;text-transform:uppercase;letter-spacing:.09em;margin-bottom:12px}h3{font-size:12px;color:#dce5f8;margin:0 0 10px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}.tab{font-size:11px;padding:8px 3px}.tab.active{border-color:var(--pink);background:#472038}
+.section{border-top:1px solid #283249;padding:13px 0}.section:first-of-type{border-top:0}.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}.field{margin:9px 0}.field label{display:flex;justify-content:space-between;gap:8px;color:#c8d2e8;font-size:12px;margin-bottom:5px}.field output{color:#ff9fbd;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--pink)}input[type=color]{width:100%;height:35px;padding:2px;background:#080d16;border:1px solid #34415a;border-radius:7px}select,input[type=text]{width:100%;background:#0a101b;color:var(--text);border:1px solid #34415a;border-radius:7px;padding:9px}
+.swatches{display:flex;gap:7px;flex-wrap:wrap}.swatch{width:26px;height:26px;border-radius:50%;border:2px solid #aab5ca;cursor:pointer}.swatch:hover{outline:2px solid var(--pink)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.full{width:100%}.small{font-size:11px;color:var(--muted)}.note{padding:10px;border:1px solid #33415a;background:#0a101b;border-radius:9px;font-size:11px;color:#b7c5dd;margin-top:12px}.status{font-size:11px;color:#aebbd2;white-space:pre-wrap;margin-top:10px}
+.hidden{display:none!important}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.stage-wrap{height:65vh;min-height:440px}.panel{height:auto;max-height:none}header{padding:0 12px}.brand{font-size:14px}.header-actions .sub{display:none}}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}</script>
+</head>
+<body>
+<header>
+ <div><div class="brand">NEKO <span>NIGHTFALL</span> / CHARACTER LAB</div><div class="sub">Anime character builder · browser-based · GitHub Pages</div></div>
+ <div class="header-actions"><span class="sub">Drag untuk putar · scroll untuk zoom</span><button id="savePreset">Export preset</button><button id="exportGlb" class="primary">Export GLB</button></div>
+</header>
+<div class="layout">
+ <section class="stage-wrap">
+  <div id="stage"></div>
+  <div class="stage-top"><div class="pill">CHARACTER PREVIEW <b id="quality">SMOOTH STYLE</b></div><div class="pill" id="meshInfo">Membangun model…</div></div>
+  <div class="stage-bottom"><button id="front">Front</button><button id="side">Side</button><button id="back">Back</button><button id="toggleSpin" class="cyan">Auto rotate: Off</button><button id="toggleGrid">Grid: On</button></div>
+ </section>
+ <aside class="panel">
+  <h2>Character workshop</h2>
+  <div class="tabs">
+   <button class="tab active" data-tab="face">Face & Hair</button><button class="tab" data-tab="body">Body & Outfit</button><button class="tab" data-tab="style">Style & Light</button>
+  </div>
+  <div id="tab-face">
+   <div class="section"><h3>Face & expression</h3>
+    <div class="row">
+     <div class="field"><label>Skin tone</label><input id="skin" type="color" value="#ffe0d2"></div>
+     <div class="field"><label>Eye color</label><input id="eyes" type="color" value="#e94364"></div>
+     <div class="field"><label>Hair color</label><input id="hair" type="color" value="#f3a0a0"></div>
+     <div class="field"><label>Hair shadow</label><input id="hairShadow" type="color" value="#8b405d"></div>
+    </div>
+    <div class="field"><label>Hair style</label><select id="hairStyle"><option value="bob">Soft bob</option><option value="long">Long hair</option><option value="twin">Twin tails</option><option value="ponytail">Ponytail</option></select></div>
+    <div class="field"><label>Eye size <output id="eyeSizeOut">1.00</output></label><input id="eyeSize" type="range" min=".75" max="1.4" step=".05" value="1"></div>
+    <div class="field"><label>Head size <output id="headSizeOut">1.00</output></label><input id="headSize" type="range" min=".88" max="1.22" step=".02" value="1"></div>
+    <div class="field"><label>Hair volume <output id="hairVolOut">1.00</output></label><input id="hairVol" type="range" min=".7" max="1.4" step=".05" value="1"></div>
+   </div>
+  </div>
+  <div id="tab-body" class="hidden">
+   <div class="section"><h3>Silhouette</h3>
+    <div class="field"><label>Height <output id="heightOut">1.00</output></label><input id="height" type="range" min=".82" max="1.2" step=".02" value="1"></div>
+    <div class="field"><label>Body proportions <output id="proportionOut">1.00</output></label><input id="proportion" type="range" min=".85" max="1.2" step=".025" value="1"></div>
+    <div class="field"><label>Leg length <output id="legsOut">1.00</output></label><input id="legs" type="range" min=".85" max="1.2" step=".025" value="1"></div>
+   </div>
+   <div class="section"><h3>Outfit</h3>
+    <div class="row"><div class="field"><label>Main outfit</label><input id="outfit" type="color" value="#191c2a"></div><div class="field"><label>Accent</label><input id="accent" type="color" value="#e43b69"></div></div>
+    <div class="field"><label>Outfit type</label><select id="outfitStyle"><option value="gothic">Gothic combat dress</option><option value="uniform">Anime uniform</option><option value="street">Cyber streetwear</option><option value="armor">Light armor</option></select></div>
+    <div class="field"><label>Accessory density <output id="accessoriesOut">6</output></label><input id="accessories" type="range" min="0" max="10" step="1" value="6"></div>
+   </div>
+  </div>
+  <div id="tab-style" class="hidden">
+   <div class="section"><h3>Material & lighting</h3>
+    <div class="field"><label>Material gloss <output id="glossOut">0.45</output></label><input id="gloss" type="range" min=".05" max=".95" step=".05" value=".45"></div>
+    <div class="field"><label>Key light <output id="keyLightOut">2.0</output></label><input id="keyLight" type="range" min=".3" max="4" step=".1" value="2"></div>
+    <div class="field"><label>Pink rim light <output id="rimLightOut">2.0</output></label><input id="rimLight" type="range" min="0" max="4" step=".1" value="2"></div>
+    <div class="field"><label>Background</label><select id="background"><option value="night">Night studio</option><option value="pink">Rose neon</option><option value="blue">Blue moonlight</option><option value="white">Clean studio</option></select></div>
+    <div class="field"><label>Outline look</label><select id="outline"><option value="soft">Soft smooth shading</option><option value="toon">Anime toon look</option></select></div>
+   </div>
+   <div class="section"><h3>Quick palettes</h3><div class="swatches">
+    <button class="swatch" title="Rose Night" style="background:#f3a0a0" data-palette="rose"></button>
+    <button class="swatch" title="Midnight" style="background:#9ebeff" data-palette="midnight"></button>
+    <button class="swatch" title="Mint" style="background:#9be3cf" data-palette="mint"></button>
+    <button class="swatch" title="Violet" style="background:#bd9cff" data-palette="violet"></button>
+    <button class="swatch" title="Silver" style="background:#c6d2df" data-palette="silver"></button>
+   </div></div>
+  </div>
+  <div class="section actions"><button id="randomize">Randomize</button><button id="reset">Reset</button><button id="screenshot">Screenshot PNG</button><button id="exportJson">Download JSON</button></div>
+  <div class="note"><b>Editor ini membangun model anime dari parameter geometri 3D.</b> Kamu dapat mengubah warna, gaya rambut, proporsi, pakaian, dan aksesori, lalu mengekspor hasil sebagai GLB. Ini merupakan base mesh stylized, bukan sculpting detail tingkat AAA; rig humanoid otomatis dan skinning perkiraan tersedia; ini masih base mesh stylized, bukan model sculpt AAA ini.</div>
+  <div id="status" class="status">Siap.</div>
+ </aside>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {GLTFExporter} from 'three/addons/exporters/GLTFExporter.js';
+const $=id=>document.getElementById(id), stage=$('stage');
+const defaults={skin:'#ffe0d2',eyes:'#e94364',hair:'#f3a0a0',hairShadow:'#8b405d',hairStyle:'bob',eyeSize:1,headSize:1,hairVol:1,height:1,proportion:1,legs:1,outfit:'#191c2a',accent:'#e43b69',outfitStyle:'gothic',accessories:6,gloss:.45,keyLight:2,rimLight:2,background:'night',outline:'soft'};
+const params={...defaults};let modelRoot,spin=false,showGrid=true;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0c1020);
+const camera=new THREE.PerspectiveCamera(35,1,.1,100);camera.position.set(3.1,2.1,6.4);
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1;stage.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,1.55,0);controls.enableDamping=true;
+scene.add(new THREE.HemisphereLight(0xd7e4ff,0x2b1524,1.6));
+const key=new THREE.DirectionalLight(0xffd5dc,2);key.position.set(3,5,4);scene.add(key);
+const rim=new THREE.DirectionalLight(0xff3f79,2);rim.position.set(-3,3,-4);scene.add(rim);
+const fill=new THREE.DirectionalLight(0x4c9eff,.8);fill.position.set(-4,2,3);scene.add(fill);
+const floor=new THREE.Mesh(new THREE.CircleGeometry(5,64),new THREE.MeshStandardMaterial({color:0x111624,roughness:.85,metalness:.1}));floor.rotation.x=-Math.PI/2;floor.position.y=-.035;scene.add(floor);
+const grid=new THREE.GridHelper(10,20,0x45334f,0x222a40);grid.position.y=-.02;scene.add(grid);
+function mat(color,rough=.55,metal=0){return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal})}
+function addMesh(parent,geo,material,pos,rot,scale){const m=new THREE.Mesh(geo,material);m.position.set(...pos);if(rot)m.rotation.set(...rot);if(scale)m.scale.set(...scale);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+function sphere(parent,material,pos,scale,seg=24){return addMesh(parent,new THREE.SphereGeometry(1,seg,Math.max(12,Math.floor(seg*.65))),material,pos,null,scale)}
+function capsule(parent,material,pos,r,len,axis='y'){let g=new THREE.CapsuleGeometry(r,len,6,16);let m=addMesh(parent,g,material,pos);if(axis==='x')m.rotation.z=Math.PI/2;if(axis==='z')m.rotation.x=Math.PI/2;return m}
+function cylinder(parent,material,pos,rt,rb,h,seg=24){return addMesh(parent,new THREE.CylinderGeometry(rt,rb,h,seg,1),material,pos)}
+function torus(parent,material,pos,r,t,rot=[Math.PI/2,0,0]){return addMesh(parent,new THREE.TorusGeometry(r,t,8,32),material,pos,rot)}
+function box(parent,material,pos,scale,rot=[0,0,0]){return addMesh(parent,new THREE.BoxGeometry(...scale),material,pos,rot)}
+function curveTube(parent,material,points,r=.025){const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));return addMesh(parent,new THREE.TubeGeometry(curve,24,r,8,false),material,[0,0,0])}
+function clearModel(){if(modelRoot){scene.remove(modelRoot);modelRoot.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&!Array.isArray(o.material))o.material.dispose()})}}
+function build(){
+ clearModel();modelRoot=new THREE.Group();modelRoot.name='NekoNightfall_AnimeCharacter';scene.add(modelRoot);
+ const skin=mat(params.skin,.62),hair=mat(params.hair,.32),hairDark=mat(params.hairShadow,.48),eye=mat(params.eyes,.25,.08),white=mat('#fff2f5',.25),black=mat('#151521',.3,.1),out=mat(params.outfit,+params.gloss,.08),accent=mat(params.accent,.32,.12),metal=mat('#b7a4ad',.25,.7),sock=mat('#282331',.6),boot=mat('#11131d',.28,.22);
+ const headS=+params.headSize, prop=+params.proportion, leg=+params.legs, H=+params.height, hairV=+params.hairVol;
+ // root proportions: floor at 0, head around 2.7
+ const rig=new THREE.Group();rig.scale.set(H,H,H);modelRoot.add(rig);
+ // legs and boots
+ const legLen=.78*leg;
+ for(const x of [-.19,.19]){
+  capsule(rig,skin,[x,.63*leg,0],.105,legLen*.65);
+  capsule(rig,sock,[x,.25*leg,0],.11,.28*leg);
+  // knee guards and boots
+  sphere(rig,black,[x,.45*leg,.015],[.12,.105,.12]);
+  addMesh(rig,new THREE.CapsuleGeometry(.12,.20,5,14),boot,[x,.13*leg,.045],[Math.PI/2,0,0],[1,.75,1]);
+  box(rig,accent,[x,.08*leg,.12],[.18,.035,.24]);
+  for(let k=0;k<3;k++)box(rig,metal,[x,.15*leg+k*.045,.13],[.14,.012,.025]);
+ }
+ // hips, skirt, torso
+ sphere(rig,skin,[0,1.05,0],[.32*prop,.25,.19]);
+ cylinder(rig,out,[0,1.02,0],.31*prop,.23*prop,.24,32);
+ // skirt cone plus separate layered panels
+ addMesh(rig,new THREE.CylinderGeometry(.48*prop,.35*prop,.42,32,1,true),out,[0,.82,0],[0,0,0]);
+ for(let i=0;i<10;i++){let a=i*Math.PI*2/10;let x=Math.sin(a)*.39*prop,z=Math.cos(a)*.28;let panel=box(rig,i%3===0?accent:out,[x,.79,z],[.16,.38,.035],[0,a,Math.sin(a)*-.08]);}
+ // torso stylized feminine silhouette (non-realistic game design)
+ capsule(rig,skin,[0,1.39,0],.20,.34);
+ sphere(rig,out,[0,1.43,0],[.29*prop,.31,.19]);
+ // collar / chest details
+ torus(rig,metal,[0,1.62,0],.17,.018);
+ box(rig,accent,[0,1.57,.188],[.045,.13,.018]);
+ // neck and head
+ capsule(rig,skin,[0,1.72,0],.09,.12);
+ sphere(rig,skin,[0,1.98,0],[.245*headS,.30*headS,.22*headS],32);
+ // ears
+ for(const x of [-1,1]){sphere(rig,skin,[x*.244*headS,1.98,0],[.06,.09,.04]);}
+ // eyes oversized anime, front z+
+ for(const x of [-1,1]){
+  sphere(rig,white,[x*.102*headS,2.005,.190*headS],[.073*params.eyeSize,.091*params.eyeSize,.027],24);
+  sphere(rig,eye,[x*.102*headS,2.003,.214*headS],[.045*params.eyeSize,.062*params.eyeSize,.016],24);
+  sphere(rig,black,[x*.102*headS,2.0,.228*headS],[.020*params.eyeSize,.038*params.eyeSize,.009],16);
+  sphere(rig,white,[x*.088*headS,2.032,.237*headS],[.014,.018,.006],12);
+  // brows and lashes
+  curveTube(rig,hairDark,[[x*.055,2.12,.205],[x*.10,2.135,.216],[x*.15,2.12,.20]],.012);
+ }
+ // nose and mouth
+ sphere(rig,mat('#f3b8b1',.6),[0,1.965,.219],[.018,.023,.012],12);
+ curveTube(rig,accent,[[-.035,1.89,.214],[0,1.882,.222],[.035,1.89,.214]],.008);
+ // hair cap, fringe, side locks
+ sphere(rig,hair,[0,2.16,.005],[.265*hairV*headS,.20*hairV*headS,.235*hairV*headS],32);
+ for(let i=0;i<9;i++){
+  let x=(i-4)*.049*headS;
+  let y=2.11-Math.abs(i-4)*.012;
+  sphere(rig,i%3===0?hairDark:hair,[x,y,.188*headS],[.045*hairV,.115*hairV,.055*hairV],18);
+ }
+ // side hair locks and back hair depending style
+ for(const s of [-1,1]){
+  capsule(rig,hair,[s*.235*headS,1.97,.015],.065*hairV,.26*hairV);
+  sphere(rig,hair,[s*.235*headS,1.84,.03],[.07*hairV,.12*hairV,.065*hairV]);
+ }
+ if(params.hairStyle==='long'){
+  capsule(rig,hair,[0,1.72,-.12],.17*hairV,.62*hairV);
+  for(const s of [-1,1])capsule(rig,hair,[s*.20,1.72,-.09],.06*hairV,.7*hairV);
+ } else if(params.hairStyle==='twin'){
+  for(const s of [-1,1]){sphere(rig,accent,[s*.26,2.13,-.03],[.07,.05,.07]);capsule(rig,hair,[s*.36,1.88,-.03],.07*hairV,.35*hairV);capsule(rig,hair,[s*.39,1.65,-.02],.05*hairV,.25*hairV);}
+ } else if(params.hairStyle==='ponytail'){
+  sphere(rig,accent,[0,2.13,-.17],[.07,.055,.05]);capsule(rig,hair,[0,1.84,-.24],.08*hairV,.45*hairV);
+ } else {
+  sphere(rig,hair,[0,1.80,-.13],[.22*hairV,.17*hairV,.10*hairV]);
+ }
+ // head accessories
+ box(rig,black,[.17,2.24,.13],[.075,.025,.018],[0,0,-.25]);
+ box(rig,accent,[.17,2.24,.15],[.055,.009,.008],[0,0,-.25]);
+ // arms, sleeves, gloves
+ for(const s of [-1,1]){
+  sphere(rig,skin,[s*.31,1.47,0],[.10,.11,.10]);
+  capsule(rig,out,[s*.37,1.34,0],.085,.30);
+  capsule(rig,skin,[s*.39,1.12,.025],.055,.20);
+  sphere(rig,black,[s*.39,1.02,.045],[.07,.065,.065]);
+  // sleeve flares and red cuff
+  cylinder(rig,out,[s*.38,1.25,0],.105,.075,.12,20);
+  torus(rig,accent,[s*.39,1.17,.015],.065,.012,[0,0,Math.PI/2]);
+  // straps
+  curveTube(rig,metal,[[s*.25,1.56,.15],[s*.32,1.43,.18],[s*.36,1.31,.12]],.012);
+ }
+ // belts, buckles, chest straps
+ torus(rig,black,[0,1.08,0],.245,.025);
+ box(rig,metal,[0,1.08,.25],[.09,.07,.025]);
+ for(const s of [-1,1])curveTube(rig,black,[[s*.20,1.60,.12],[s*.12,1.42,.18],[s*.22,1.20,.17]],.025);
+ // accessories count
+ const n=+params.accessories;
+ for(let i=0;i<n;i++){
+  let s=i%2===0?1:-1, y=1.22-(i%4)*.12;
+  box(rig,i%2?accent:metal,[s*(.28+(i%3)*.015),y,.03],[.075,.075,.065],[0,0,s*.12]);
+  box(rig,black,[s*.29,y-.045,.065],[.045,.018,.015]);
+ }
+ // outfit type variations
+ if(params.outfitStyle==='uniform'){
+  // tie and pleat highlights
+  box(rig,accent,[0,1.48,.205],[.045,.16,.025],[0,0,.04]);
+  for(let i=0;i<6;i++){let a=i*Math.PI/3;box(rig,white,[Math.sin(a)*.39,.79,Math.cos(a)*.22],[.025,.30,.02],[0,a,0]);}
+ } else if(params.outfitStyle==='street'){
+  sphere(rig,out,[0,1.44,0],[.34,.30,.23]);
+  box(rig,accent,[0,1.35,.235],[.18,.035,.02]);
+  for(let s of [-1,1])box(rig,accent,[s*.27,1.43,.05],[.07,.16,.08],[0,0,s*.2]);
+ } else if(params.outfitStyle==='armor'){
+  for(let s of [-1,1])sphere(rig,metal,[s*.24,1.45,.12],[.13,.14,.07]);
+  sphere(rig,out,[0,1.40,.21],[.22,.18,.06]);
+  for(let s of [-1,1])box(rig,accent,[s*.34,1.34,.04],[.14,.12,.13],[0,0,s*.25]);
+ }
+ // boots and outfit micro details
+ for(let i=0;i<5;i++){box(rig,metal,[-.12+i*.06,1.09,.255],[.025,.025,.015]);}
+ // floor shadow-ish circular platform
+ const platform=new THREE.Mesh(new THREE.CylinderGeometry(.78,.82,.05,48),mat('#202437',.7,.25));platform.position.y=.02;rig.add(platform);
+ $('meshInfo').textContent=`Parametric anime base · ${countMeshes(modelRoot)} parts`;
+}
+function countMeshes(g){let n=0;g.traverse(o=>{if(o.isMesh)n++});return n}
+function readControls(){for(const k of Object.keys(defaults)){const el=$(k);if(!el)continue;params[k]=el.type==='range'?+el.value:el.value} }
+function syncControls(){for(const k of Object.keys(defaults)){const el=$(k);if(el)el.value=params[k]}updateLabels()}
+function updateLabels(){const labels={eyeSize:'eyeSizeOut',headSize:'headSizeOut',hairVol:'hairVolOut',height:'heightOut',proportion:'proportionOut',legs:'legsOut',accessories:'accessoriesOut',gloss:'glossOut',keyLight:'keyLightOut',rimLight:'rimLightOut'};for(const [k,id] of Object.entries(labels))$(id).textContent=Number(params[k]).toFixed(k==='accessories'?0:2);key.intensity=+params.keyLight;rim.intensity=+params.rimLight;const bg={night:0x0c1020,pink:0x25101e,blue:0x09182d,white:0xd8dce7};scene.background=new THREE.Color(bg[params.background]);floor.material.color.set(params.background==='white'?'#b8becb':'#111624');}
+function apply(){readControls();updateLabels();build()}
+function resize(){let w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix()}new ResizeObserver(resize).observe(stage);resize();
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));['face','body','style'].forEach(t=>$('tab-'+t).classList.toggle('hidden',t!==b.dataset.tab))});
+Object.keys(defaults).forEach(k=>{const el=$(k);if(el)el.addEventListener('input',()=>{readControls();updateLabels();if(['skin','eyes','hair','hairShadow','hairStyle','eyeSize','headSize','hairVol','height','proportion','legs','outfit','accent','outfitStyle','accessories'].includes(k))build()})});
+document.querySelectorAll('[data-palette]').forEach(b=>b.onclick=()=>{const p={rose:{hair:'#f3a0a0',hairShadow:'#8b405d',eyes:'#e94364',outfit:'#191c2a',accent:'#e43b69'},midnight:{hair:'#9ebeff',hairShadow:'#394c8e',eyes:'#54b8ff',outfit:'#111a2c',accent:'#5076e8'},mint:{hair:'#9be3cf',hairShadow:'#337c77',eyes:'#5cd8bc',outfit:'#182723',accent:'#4dbd9c'},violet:{hair:'#bd9cff',hairShadow:'#654b9d',eyes:'#b48bff',outfit:'#21182e',accent:'#8f5ce0'},silver:{hair:'#c6d2df',hairShadow:'#596879',eyes:'#8fc9ff',outfit:'#202633',accent:'#7a9cbf'}}[b.dataset.palette];Object.assign(params,p);syncControls();apply()});
+$('randomize').onclick=()=>{const pick=a=>a[Math.floor(Math.random()*a.length)];params.hair=pick(['#f3a0a0','#9ebeff','#9be3cf','#bd9cff','#c6d2df','#e4bd78']);params.hairShadow=pick(['#8b405d','#394c8e','#337c77','#654b9d','#596879']);params.eyes=pick(['#e94364','#54b8ff','#5cd8bc','#b48bff','#d9a33f']);params.outfit=pick(['#191c2a','#111a2c','#182723','#21182e','#202633']);params.accent=pick(['#e43b69','#5076e8','#4dbd9c','#8f5ce0','#7a9cbf']);params.hairStyle=pick(['bob','long','twin','ponytail']);params.outfitStyle=pick(['gothic','uniform','street','armor']);syncControls();apply()};
+$('reset').onclick=()=>{Object.assign(params,defaults);syncControls();apply()};
+$('front').onclick=()=>{camera.position.set(0,2.0,6.4);controls.target.set(0,1.45,0);controls.update()};
+$('side').onclick=()=>{camera.position.set(6.4,2,0);controls.target.set(0,1.45,0);controls.update()};
+$('back').onclick=()=>{camera.position.set(0,2,-6.4);controls.target.set(0,1.45,0);controls.update()};
+$('toggleSpin').onclick=()=>{spin=!spin;$('toggleSpin').textContent='Auto rotate: '+(spin?'On':'Off')};
+$('toggleGrid').onclick=()=>{showGrid=!showGrid;grid.visible=showGrid;$('toggleGrid').textContent='Grid: '+(showGrid?'On':'Off')};
+function config(){readControls();return {format:'neko-nightfall-character-preset',version:1,parameters:params,notes:'Parametric character preset. Use the same builder to restore these parameters.'}}
+function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
+$('savePreset').onclick=$('exportJson').onclick=()=>download(new Blob([JSON.stringify(config(),null,2)],{type:'application/json'}),'neko-character-preset.json');
+$('screenshot').onclick=()=>{renderer.render(scene,camera);renderer.domElement.toBlob(b=>download(b,'neko-character-preview.png'))};
+function makeRiggedExportClone(){
+ // Bake every source mesh into character-local coordinates, then skin it to one shared humanoid skeleton.
+ modelRoot.updateMatrixWorld(true);
+ const clone=new THREE.Group();clone.name='NekoNightfall_RiggedCharacter';
+ const specs=[
+  ['Root',[0,0,0],-1],['Hips',[0,.96,0],0],['Spine',[0,1.22,0],1],['Chest',[0,1.47,0],2],['Neck',[0,1.70,0],3],['Head',[0,1.91,0],4],
+  ['L_UpperArm',[-.29,1.48,0],3],['L_LowerArm',[-.38,1.25,0],6],['L_Hand',[-.40,1.06,.025],7],
+  ['R_UpperArm',[.29,1.48,0],3],['R_LowerArm',[.38,1.25,0],9],['R_Hand',[.40,1.06,.025],10],
+  ['L_UpperLeg',[-.19,.76,0],1],['L_LowerLeg',[-.19,.37,0],12],['L_Foot',[-.19,.12,.04],13],
+  ['R_UpperLeg',[.19,.76,0],1],['R_LowerLeg',[.19,.37,0],15],['R_Foot',[.19,.12,.04],16]
+ ];
+ specs.forEach(s=>{s[1][0]*=+params.proportion;s[1][1]*=+params.height;s[1][2]*=+params.height});
+ const bones=[];
+ specs.forEach((s,i)=>{const bone=new THREE.Bone();bone.name=s[0];const pp=s[2]<0?[0,0,0]:specs[s[2]][1];bone.position.set(s[1][0]-pp[0],s[1][1]-pp[1],s[1][2]-pp[2]);bones.push(bone);if(s[2]<0)clone.add(bone);else bones[s[2]].add(bone)});
+ const skeleton=new THREE.Skeleton(bones),sources=[];modelRoot.traverse(o=>{if(o.isMesh&&o.geometry&&o.visible)sources.push(o)});
+ for(const src of sources){
+  src.updateWorldMatrix(true,false);const g=src.geometry.clone();
+  g.applyMatrix4(new THREE.Matrix4().copy(modelRoot.matrixWorld).invert().multiply(src.matrixWorld));
+  const pos=g.getAttribute('position'),si=new Uint16Array(pos.count*4),sw=new Float32Array(pos.count*4);
+  const nm=(src.name||'').toLowerCase(),head=/eye|hair|head|brow|lash|nose|mouth|ear/.test(nm),leg=/boot|sock|leg|knee|foot/.test(nm),arm=/arm|sleeve|glove|hand|cuff/.test(nm);
+  for(let v=0;v<pos.count;v++){
+   const x=pos.getX(v),y=pos.getY(v),z=pos.getZ(v);let cs;
+   if(head)cs=[{i:5,d:Math.hypot(x,y-1.98,z)},{i:4,d:Math.hypot(x,y-1.7,z)}];
+   else if(leg){const l=x<0;cs=[{i:l?12:15,d:Math.hypot(x-(l?-.19:.19),y-.76,z)},{i:l?13:16,d:Math.hypot(x-(l?-.19:.19),y-.37,z)},{i:l?14:17,d:Math.hypot(x-(l?-.19:.19),y-.12,z)}]}
+   else if(arm){const l=x<0;cs=[{i:l?6:9,d:Math.hypot(x-(l?-.29:.29),y-1.48,z)},{i:l?7:10,d:Math.hypot(x-(l?-.38:.38),y-1.25,z)},{i:l?8:11,d:Math.hypot(x-(l?-.4:.4),y-1.06,z)}]}
+   else cs=specs.map((sp,i)=>({i,d:Math.hypot((x-sp[1][0])*1.1,y-sp[1][1],(z-sp[1][2])*1.1)})).filter(c=>c.i!==0).sort((a,b)=>a.d-b.d).slice(0,4);
+   cs.sort((a,b)=>a.d-b.d);cs=cs.slice(0,4);const ws=cs.map(c=>1/Math.pow(c.d+.055,3)),sum=ws.reduce((a,b)=>a+b,0)||1;
+   for(let j=0;j<4;j++){si[v*4+j]=cs[j]?.i??cs[0].i;sw[v*4+j]=cs[j]?ws[j]/sum:0}
+  }
+  g.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(si,4));g.setAttribute('skinWeight',new THREE.Float32BufferAttribute(sw,4));
+  const m=new THREE.SkinnedMesh(g,src.material);m.name=(src.name||'CharacterPart').replace(/[^a-zA-Z0-9_]/g,'_');clone.add(m);m.bind(skeleton,new THREE.Matrix4());
+ }
+ clone.updateMatrixWorld(true);
+ const qt=(name,axis,angles,times=[0,.5,1])=>{const values=[];for(const a of angles){const e=new THREE.Euler(0,0,0,'XYZ');e[axis]=a;const q=new THREE.Quaternion().setFromEuler(e);values.push(q.x,q.y,q.z,q.w)}return new THREE.QuaternionKeyframeTrack(`${name}.quaternion`,times,values)};
+ const clips=[
+  new THREE.AnimationClip('Idle',2,[qt('Chest','z',[0,.018,0],[0,1,2]),qt('Head','z',[0,.025,0],[0,1,2])]),
+  new THREE.AnimationClip('Walk',1,[qt('L_UpperLeg','x',[.3,-.3,.3]),qt('R_UpperLeg','x',[-.3,.3,-.3]),qt('L_LowerLeg','x',[0,.22,0]),qt('R_LowerLeg','x',[.22,0,.22]),qt('L_UpperArm','x',[-.2,.2,-.2]),qt('R_UpperArm','x',[.2,-.2,.2])]),
+  new THREE.AnimationClip('Run',.65,[qt('L_UpperLeg','x',[.62,-.62,.62]),qt('R_UpperLeg','x',[-.62,.62,-.62]),qt('L_LowerLeg','x',[0,.45,0]),qt('R_LowerLeg','x',[.45,0,.45]),qt('L_UpperArm','x',[-.48,.48,-.48]),qt('R_UpperArm','x',[.48,-.48,.48])]),
+  new THREE.AnimationClip('Aim',1,[qt('L_UpperArm','z',[-.72,-.72,-.72]),qt('R_UpperArm','z',[.72,.72,.72]),qt('L_LowerArm','x',[-.45,-.45,-.45]),qt('R_LowerArm','x',[-.45,-.45,-.45])]),
+  new THREE.AnimationClip('Shoot',.35,[qt('Chest','x',[0,-.07,0],[0,.12,.35]),qt('R_UpperArm','x',[0,-.14,0],[0,.12,.35]),qt('R_LowerArm','x',[0,-.1,0],[0,.12,.35])]),
+  new THREE.AnimationClip('Death',1.4,[qt('Chest','z',[0,-.3,-1.05],[0,.65,1.4]),qt('Head','z',[0,.12,.25],[0,.65,1.4]),qt('L_UpperArm','z',[0,-.45,-.85],[0,.65,1.4]),qt('R_UpperArm','z',[0,.45,.85],[0,.65,1.4]),qt('L_UpperLeg','x',[0,.25,.35],[0,.65,1.4]),qt('R_UpperLeg','x',[0,-.25,-.35],[0,.65,1.4])])
+ ];
+ return {clone,clips};
+}
+$('exportGlb').onclick=async()=>{try{$('status').textContent='Membangun skeleton dan skin weights lalu mengekspor GLB…';const exporter=new GLTFExporter();const rigged=makeRiggedExportClone();const result=await exporter.parseAsync(rigged.clone,{binary:true,onlyVisible:true,animations:rigged.clips});download(new Blob([result],{type:'model/gltf-binary'}),'neko-rigged-character.glb');$('status').textContent='GLB dibuat dengan skeleton humanoid, skinning berbobot, dan 6 klip animasi. Uji deformasi, pose, serta material di Godot sebelum mengganti model game.'}catch(e){console.error(e);$('status').textContent='Export GLB gagal: '+e.message}};
+function animate(){requestAnimationFrame(animate);if(spin&&modelRoot)modelRoot.rotation.y+=.004;controls.update();renderer.render(scene,camera)}build();updateLabels();animate();
+</script>
+</body></html>
