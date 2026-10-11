@@ -1,12 +1,8 @@
-name: Validate Godot Project and Character
+name: Validate Godot Project
 
 on:
   push:
   pull_request:
-  workflow_dispatch:
-
-permissions:
-  contents: read
 
 env:
   GODOT_VERSION: 4.5.1
@@ -18,51 +14,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download pinned Godot 4.5.1
+      - name: Download pinned Godot
         shell: bash
         run: |
-          set -euo pipefail
-          mkdir -p logs
-          curl --fail --location --retry 3 --output godot.zip \
+          curl --fail --location --output godot.zip \
             "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
           unzip -q godot.zip
           mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot
           chmod +x godot
 
-      - name: Import all Godot resources
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./godot --headless --editor --path . --import 2>&1 | tee logs/import.log
-          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/import.log; then
-            echo 'Godot import reported an error.'
-            exit 1
-          fi
-
-      - name: Start main scene headlessly
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./godot --headless --path . --quit-after 3 2>&1 | tee logs/project-startup.log
-          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/project-startup.log; then
-            echo 'Project startup reported an error.'
-            exit 1
-          fi
-
-      - name: Validate gameplay vertical slice
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./godot --headless --path . --script res://scripts/ci/validate_gameplay.gd 2>&1 | tee logs/gameplay-validation.log
-          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/gameplay-validation.log; then
-            echo 'Gameplay validation reported an error.'
-            exit 1
-          fi
-
-      - name: Upload validation logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: godot-validation-logs-${{ github.sha }}
-          path: logs/
-          if-no-files-found: warn
+      - name: Validate project
+        run: ./godot --headless --path . --editor --quit

@@ -7,30 +7,20 @@ func _ready() -> void:
     _bind_hold("MoveLeft", "move_left")
     _bind_hold("MoveDown", "move_backward")
     _bind_hold("MoveRight", "move_right")
-    _bind_hold("Aim", "aim")
     _style_round($MoveUp, Color(0.08, 0.22, 0.42, 0.88))
     _style_round($MoveLeft, Color(0.08, 0.22, 0.42, 0.88))
     _style_round($MoveDown, Color(0.08, 0.22, 0.42, 0.88))
     _style_round($MoveRight, Color(0.08, 0.22, 0.42, 0.88))
     _style_round($Fire, Color(0.78, 0.12, 0.10, 0.9))
-    _style_round($Aim, Color(0.34, 0.18, 0.52, 0.9))
     _style_round($Reload, Color(0.12, 0.34, 0.68, 0.9))
     _style_round($Flashlight, Color(0.72, 0.42, 0.08, 0.9))
     _style_round($Shoulder, Color(0.34, 0.18, 0.62, 0.9))
     _style_round($View, Color(0.18, 0.34, 0.34, 0.92))
-    _style_round($Interact, Color(0.62, 0.42, 0.08, 0.92))
-    _style_round($Heal, Color(0.68, 0.12, 0.22, 0.92))
-    _style_round($Inventory, Color(0.26, 0.32, 0.44, 0.92))
-    _style_round($Pause, Color(0.26, 0.32, 0.44, 0.92))
     $Fire.pressed.connect(_one_shot.bind("fire"))
     $Reload.pressed.connect(_one_shot.bind("reload"))
     $Flashlight.pressed.connect(_one_shot.bind("flashlight"))
     $Shoulder.pressed.connect(_one_shot.bind("shoulder_swap"))
     $View.pressed.connect(_toggle_view)
-    $Interact.pressed.connect(_one_shot.bind("interact"))
-    $Heal.pressed.connect(_one_shot.bind("heal"))
-    $Inventory.pressed.connect(_one_shot.bind("inventory"))
-    $Pause.pressed.connect(_one_shot.bind("pause"))
 
 func _style_round(button: Button, color: Color) -> void:
     var normal := StyleBoxFlat.new()
@@ -70,11 +60,6 @@ func _process(_delta: float) -> void:
         Input.action_press(action)
 
 func _one_shot(action: String) -> void:
-    if action == "pause" or action == "inventory":
-        var game := get_tree().get_first_node_in_group("game")
-        if game:
-            game.call("toggle_pause_menu" if action == "pause" else "toggle_inventory_menu")
-        return
     Input.action_press(action)
     await get_tree().process_frame
     Input.action_release(action)

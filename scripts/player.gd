@@ -2,8 +2,6 @@ extends CharacterBody3D
 
 signal health_changed(value: int)
 signal ammo_changed(current: int, reserve: int)
-signal inventory_changed(items: Dictionary)
-signal noise_emitted(position: Vector3, radius: float)
 signal fired
 
 @export var walk_speed := 4.0
@@ -14,15 +12,11 @@ signal fired
 @export var camera_side_offset := 0.42
 @export var camera_distance := 3.6
 @export var aim_ray_distance := 60.0
-@export var magazine_size := 6
-@export var reload_duration := 1.05
-@export var invulnerability_duration := 0.55
 var health := 100
 var ammo := 6
 var reserve_ammo := 24
-var inventory: Dictionary = {}
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
-var pitch := -0.32
+var pitch := -0.18
 var camera_yaw := 0.0
 var shoulder_side := 1.0
 var can_shoot := true
@@ -51,34 +45,16 @@ var first_person_arms: Node3D
 @onready var weapon_view: Node3D = $PlayerModel/WeaponView
 var weapon_home_position := Vector3.ZERO
 var weapon_base_position := Vector3.ZERO
-var weapon_home_rotation := Vector3.ZERO
-var weapon_home_parent: Node3D
-var is_dead := false
-var is_reloading := false
-var controls_locked := false
-var invulnerability_time := 0.0
-var interaction_target: Node3D
 
 func _ready() -> void:
     add_to_group("player")
-    player_model.visible = true
     health = max_health
-    weapon_home_parent = player_model.call("get_weapon_socket") as Node3D
-    if not weapon_home_parent:
-        weapon_home_parent = player_model
-        weapon_home_position = weapon_view.position
-    else:
-        weapon_home_position = Vector3(0.0, 0.18, -0.13)
-        weapon_view.reparent(weapon_home_parent, false)
-        weapon_view.position = weapon_home_position
-    weapon_home_rotation = weapon_view.rotation
+    weapon_home_position = weapon_view.position
     weapon_base_position = weapon_home_position
     weapon_home_scale = weapon_view.scale
     camera_pivot_home_position = camera_pivot.position
     camera_arm_home_length = camera_distance
     model_home_position = player_model.position
-    muzzle.reparent(weapon_view, false)
-    muzzle.position = Vector3(0.0, 0.08, -0.55)
     camera_yaw = rotation.y
     camera_pivot.rotation.x = pitch
     camera_arm.position.x = camera_side_offset * shoulder_side
@@ -110,10 +86,10 @@ func toggle_camera_view() -> bool:
         camera.fov = 76.0
     else:
         first_person_arms.visible = false
-        weapon_view.reparent(weapon_home_parent, false)
+        weapon_view.reparent(player_model, false)
         weapon_base_position = weapon_home_position
         weapon_view.position = weapon_base_position
-        weapon_view.rotation = weapon_home_rotation
+        weapon_view.rotation = Vector3.ZERO
         weapon_view.scale = weapon_home_scale
         player_model.visible = true
         camera_pivot.position = camera_pivot_home_position
@@ -167,8 +143,6 @@ func _add_first_person_ellipsoid(part_name: String, part_position: Vector3, part
     first_person_arms.add_child(mesh_instance)
 
 func _unhandled_input(event: InputEvent) -> void:
-    if controls_locked:
-        return
     if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
         camera_yaw -= event.screen_relative.x * 0.0025
         pitch = clamp(pitch - event.screen_relative.y * 0.002, -0.75, 0.35)
@@ -187,11 +161,10 @@ func _unhandled_input(event: InputEvent) -> void:
         pitch = clamp(pitch - drag_delta.y * 0.004, -0.75, 0.35)
         rotation.y = camera_yaw
         camera_pivot.rotation.x = pitch
+    if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+        Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED else Input.MOUSE_MODE_CAPTURED
 
 func _physics_process(delta: float) -> void:
-    if is_dead or controls_locked:
-        return
-    invulnerability_time = maxf(invulnerability_time - delta, 0.0)
     weapon_recoil = move_toward(weapon_recoil, 0.0, delta * 0.9)
     reload_animation = move_toward(reload_animation, 0.0, delta * 2.4)
     weapon_view.position = weapon_base_position + Vector3(0, reload_animation * 0.08, weapon_recoil * 0.35)
@@ -199,8 +172,6 @@ func _physics_process(delta: float) -> void:
     if not is_on_floor(): velocity.y -= gravity * delta
     if Input.is_action_just_pressed("jump") and is_on_floor(): velocity.y = jump_velocity
     if Input.is_action_just_pressed("reload"): reload_weapon()
-    if Input.is_action_just_pressed("heal"): use_medkit()
-    if Input.is_action_just_pressed("interact"): _interact_with_target()
     if Input.is_action_just_pressed("flashlight"):
         flashlight_on = not flashlight_on
         flashlight.visible = flashlight_on
@@ -229,10 +200,8 @@ func _physics_process(delta: float) -> void:
         velocity.x = move_toward(velocity.x, 0.0, speed * delta * 6.0)
         velocity.z = move_toward(velocity.z, 0.0, speed * delta * 6.0)
     move_and_slide()
-    _update_interaction_target()
     var movement_amount := Vector2(velocity.x, velocity.z).length()
     player_model.call("set_moving", movement_amount > 0.15, is_sprinting and movement_amount > 0.15)
-    player_model.call("set_aiming", Input.is_action_pressed("aim"))
     if not player_model.call("uses_imported_model"):
         if movement_amount > 0.15:
             walk_time += delta * 9.0
@@ -250,16 +219,15 @@ func swap_camera_shoulder() -> void:
     camera_arm.position.x = camera_side_offset * shoulder_side
 
 func shoot() -> void:
-    if is_dead or controls_locked or is_reloading or not can_shoot or ammo <= 0: return
+    if not can_shoot or ammo <= 0: return
     can_shoot = false
     weapon_recoil = 0.13
     get_tree().create_timer(0.22).timeout.connect(func(): can_shoot = true)
     ammo -= 1
     ammo_changed.emit(ammo, reserve_ammo)
     fired.emit()
-    noise_emitted.emit(global_position, 24.0)
     weapon_view.call("fire_effect")
-    player_model.call("play_action", "Shoot")
+    player_model.call("play_action", "holding-both-shoot")
     var aim_start := camera.global_position
     var aim_end := aim_start + -camera.global_transform.basis.z * aim_ray_distance
     var aim_query := PhysicsRayQueryParameters3D.create(aim_start, aim_end)
@@ -275,34 +243,18 @@ func shoot() -> void:
         shot_hit.collider.take_damage(damage)
 
 func reload_weapon() -> void:
-    if is_dead or controls_locked or is_reloading or ammo >= magazine_size or reserve_ammo <= 0:
-        return
-    is_reloading = true
+    if ammo >= 6 or reserve_ammo <= 0: return
     reload_animation = 1.0
-    player_model.call("play_action", "Reload")
-    await get_tree().create_timer(reload_duration).timeout
-    if not is_inside_tree():
-        return
-    var needed := magazine_size - ammo
+    var needed := 6 - ammo
     var loaded: int = mini(needed, reserve_ammo)
     ammo += loaded
     reserve_ammo -= loaded
-    is_reloading = false
     ammo_changed.emit(ammo, reserve_ammo)
 
 func take_damage(amount: int) -> void:
-    if is_dead or amount <= 0 or invulnerability_time > 0.0:
-        return
     health = max(health - amount, 0)
     health_changed.emit(health)
-    invulnerability_time = invulnerability_duration
-    if health == 0:
-        is_dead = true
-        velocity = Vector3.ZERO
-        player_model.call("play_action", "Death", false)
-        get_tree().call_group("game", "player_died")
-    else:
-        player_model.call("play_action", "Hit")
+    if health == 0: get_tree().call_group("game", "player_died")
 
 func collect_ammo(amount: int) -> void:
     reserve_ammo += amount
@@ -311,86 +263,3 @@ func collect_ammo(amount: int) -> void:
 func heal(amount: int) -> void:
     health = min(health + amount, max_health)
     health_changed.emit(health)
-
-func set_controls_locked(value: bool) -> void:
-    controls_locked = value
-    if value:
-        interaction_target = null
-        var game := get_tree().get_first_node_in_group("game")
-        if game and game.has_method("set_interaction_prompt"):
-            game.call("set_interaction_prompt", "")
-
-func add_item(item_id: String, amount: int = 1) -> void:
-    if amount <= 0:
-        return
-    inventory[item_id] = int(inventory.get(item_id, 0)) + amount
-    inventory_changed.emit(inventory.duplicate())
-
-func has_item(item_id: String, amount: int = 1) -> bool:
-    return int(inventory.get(item_id, 0)) >= amount
-
-func consume_item(item_id: String, amount: int = 1) -> bool:
-    if amount <= 0 or not has_item(item_id, amount):
-        return false
-    var remaining := int(inventory[item_id]) - amount
-    if remaining == 0:
-        inventory.erase(item_id)
-    else:
-        inventory[item_id] = remaining
-    inventory_changed.emit(inventory.duplicate())
-    return true
-
-func use_medkit() -> bool:
-    if is_dead or health >= max_health or not consume_item("medkit"):
-        return false
-    heal(35)
-    return true
-
-func get_checkpoint_data() -> Dictionary:
-    return {
-        "position": [global_position.x, global_position.y, global_position.z],
-        "health": health,
-        "ammo": ammo,
-        "reserve_ammo": reserve_ammo,
-        "inventory": inventory.duplicate(),
-    }
-
-func restore_checkpoint_data(data: Dictionary) -> void:
-    var saved_position: Variant = data.get("position", [])
-    if saved_position is Array and saved_position.size() == 3:
-        global_position = Vector3(float(saved_position[0]), float(saved_position[1]), float(saved_position[2]))
-        velocity = Vector3.ZERO
-    health = clampi(int(data.get("health", max_health)), 1, max_health)
-    ammo = clampi(int(data.get("ammo", magazine_size)), 0, magazine_size)
-    reserve_ammo = maxi(int(data.get("reserve_ammo", 24)), 0)
-    var saved_inventory: Variant = data.get("inventory", {})
-    inventory = saved_inventory.duplicate(true) if saved_inventory is Dictionary else {}
-    is_dead = false
-    is_reloading = false
-    invulnerability_time = 0.0
-    health_changed.emit(health)
-    ammo_changed.emit(ammo, reserve_ammo)
-    inventory_changed.emit(inventory.duplicate())
-
-func _update_interaction_target() -> void:
-    var query_start := camera.global_position
-    var query_end := query_start + -camera.global_transform.basis.z * 3.0
-    var query := PhysicsRayQueryParameters3D.create(query_start, query_end)
-    query.exclude = [get_rid()]
-    query.collide_with_areas = true
-    query.collide_with_bodies = true
-    var result := get_world_3d().direct_space_state.intersect_ray(query)
-    var candidate: Node3D = null
-    if not result.is_empty():
-        candidate = result.get("collider") as Node3D
-    if candidate == interaction_target:
-        return
-    interaction_target = candidate if candidate and candidate.has_method("get_interaction_prompt") and candidate.has_method("interact") else null
-    var prompt := String(interaction_target.call("get_interaction_prompt", self)) if interaction_target else ""
-    var game := get_tree().get_first_node_in_group("game")
-    if game and game.has_method("set_interaction_prompt"):
-        game.call("set_interaction_prompt", prompt)
-
-func _interact_with_target() -> void:
-    if is_instance_valid(interaction_target) and interaction_target.has_method("interact"):
-        interaction_target.call("interact", self)
