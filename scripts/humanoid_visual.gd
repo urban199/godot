@@ -1,8 +1,7 @@
 extends Node3D
 
 const GLTF_SCENE_LOADER := preload("res://scripts/gltf_scene_loader.gd")
-const GENSHIN_STYLE_MODEL_PATH := "res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_genshin_style.glb"
-const SURVIVOR_MODEL_PATH := "res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_rigged.glb"
+const SURVIVOR_MODEL_PATH := "res://assets/characters/player/anime-model.glb"
 
 @export_enum("survivor", "zombie") var role := "survivor"
 
@@ -39,8 +38,7 @@ func _ready() -> void:
 	visual_home_y = visual_root.position.y
 	add_child(visual_root)
 	if role == "survivor":
-		var model_path := GENSHIN_STYLE_MODEL_PATH if FileAccess.file_exists(GENSHIN_STYLE_MODEL_PATH) else SURVIVOR_MODEL_PATH
-		imported_model = GLTF_SCENE_LOADER.load_scene(model_path)
+		imported_model = GLTF_SCENE_LOADER.load_scene(SURVIVOR_MODEL_PATH)
 		if imported_model:
 			imported_model.name = "NekoNightfallRigged"
 			visual_root.add_child(imported_model)
@@ -55,10 +53,15 @@ func _ready() -> void:
 					_play_imported_clip("Idle")
 				else:
 					push_warning("Neko Nightfall rig has no AnimationPlayer; keeping its bind pose.")
+			elif character_mesh:
+				# Keep the authored face, hair, and clothing visible while Actions rigs
+				# the source GLB. This is a static fallback, not an animated character.
+				_prepare_imported_visual(imported_model)
+				push_warning("anime-model.glb is still static; run the rig-and-validate GitHub Actions workflow.")
 		else:
 			_use_procedural_survivor()
-		if is_instance_valid(imported_model) and (not _find_character_mesh(imported_model) or not _find_character_skeleton(imported_model)):
-			push_warning("Neko Nightfall GLB has no usable mesh/skeleton; showing the built-in survivor instead.")
+		if is_instance_valid(imported_model) and not _find_character_mesh(imported_model):
+			push_warning("anime-model.glb has no usable mesh; showing the built-in survivor instead.")
 			_use_procedural_survivor()
 	else:
 		_build_zombie()

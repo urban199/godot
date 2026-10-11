@@ -1,10 +1,13 @@
-name: Generate and Validate Neko Nightfall Character
+name: Rig and Validate anime-model.glb
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'tools/characters/generate_genshin_style_character.py'
+      - 'assets/characters/player/anime-model.glb'
+      - 'tools/characters/rig_anime_model.py'
+      - 'scripts/humanoid_visual.gd'
+      - 'scripts/ci/validate_character.gd'
       - '.github/workflows/generate-character.yml'
 
 permissions:
@@ -14,37 +17,37 @@ env:
   GODOT_VERSION: 4.5.1
 
 jobs:
-  generate:
+  rig-and-validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Blender
+      - name: Install Blender and its Python dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y blender python3-numpy
           blender --version
           blender -b --python-expr "import numpy; print('Blender NumPy:', numpy.__version__)"
 
-      - name: Generate the rigged character
+      - name: Generate rig, weights, and distinct animation clips from anime-model.glb
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build logs
-          NEKO_OUTPUT="$GITHUB_WORKSPACE/build/neko_nightfall_genshin_style.glb" \
-            blender -b --python tools/characters/generate_genshin_style_character.py \
+          NEKO_INPUT="$GITHUB_WORKSPACE/assets/characters/player/anime-model.glb" \
+          NEKO_OUTPUT="$GITHUB_WORKSPACE/build/anime-model-rigged.glb" \
+            blender -b --python tools/characters/rig_anime_model.py \
             2>&1 | tee logs/blender-generation.log
-          test -s build/neko_nightfall_genshin_style.glb
+          test -s build/anime-model-rigged.glb
 
-      - name: Stage generated GLB at the runtime destination
+      - name: Stage generated model as the sole runtime character
         shell: bash
         run: |
           set -euo pipefail
-          TARGET='assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_genshin_style.glb'
-          cp build/neko_nightfall_genshin_style.glb "$TARGET"
-          test -s "$TARGET"
+          cp build/anime-model-rigged.glb assets/characters/player/anime-model.glb
+          test -s assets/characters/player/anime-model.glb
 
       - name: Download Godot 4.5.1
         shell: bash
@@ -56,7 +59,7 @@ jobs:
           mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot
           chmod +x godot
 
-      - name: Import project and validate generated character in gameplay
+      - name: Import project and validate model and gameplay integration
         shell: bash
         run: |
           set -euo pipefail
@@ -68,31 +71,31 @@ jobs:
           ./godot --headless --path . --script res://scripts/ci/validate_character.gd \
             2>&1 | tee logs/character-validation.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/character-validation.log; then
-            echo 'Generated character validation reported an error.'
+            echo 'Character validation reported an error.'
             exit 1
           fi
 
-      - name: Upload generated character and logs
+      - name: Upload model and validation logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: neko-nightfall-genshin-style-${{ github.sha }}
+          name: anime-model-rigged-${{ github.sha }}
           path: |
-            assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_genshin_style.glb
+            assets/characters/player/anime-model.glb
             logs/
           if-no-files-found: error
 
-      - name: Commit generated character to the triggering branch
+      - name: Commit validated rigged model
         shell: bash
         run: |
           set -euo pipefail
-          TARGET='assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_genshin_style.glb'
+          TARGET='assets/characters/player/anime-model.glb'
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -- "$TARGET"
           if git diff --cached --quiet; then
-            echo 'Generated character is unchanged; no commit is needed.'
+            echo 'Generated model is unchanged; no commit is needed.'
             exit 0
           fi
-          git commit -m 'chore: generate Neko Nightfall character model'
+          git commit -m 'chore: rig and animate anime character model'
           git push origin "HEAD:${GITHUB_REF_NAME}"

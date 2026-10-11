@@ -15,11 +15,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node for deterministic GLB check
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
       - name: Download pinned Godot and export templates
         shell: bash
         run: |
@@ -39,12 +34,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node tools/characters/extend_neko_animations.js --verify
           GODOT="./Godot_v${GODOT_VERSION}-stable_linux.x86_64"
           "$GODOT" --headless --editor --path . --import 2>&1 | tee logs/import.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/import.log; then exit 1; fi
-          "$GODOT" --headless --path . --script res://scripts/ci/validate_character.gd 2>&1 | tee logs/character-validation.log
-          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/character-validation.log; then exit 1; fi
 
       - name: Export Web Preview
         shell: bash

@@ -18,14 +18,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node for deterministic GLB check
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Verify generated Hit and Death clips are reproducible
-        run: node tools/characters/extend_neko_animations.js --verify
-
       - name: Download pinned Godot 4.5.1
         shell: bash
         run: |
@@ -47,16 +39,6 @@ jobs:
             exit 1
           fi
 
-      - name: Validate character rig, skin, clips, and gameplay integration
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./godot --headless --path . --script res://scripts/ci/validate_character.gd 2>&1 | tee logs/character-validation.log
-          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/character-validation.log; then
-            echo 'Character validation reported an error.'
-            exit 1
-          fi
-
       - name: Start main scene headlessly
         shell: bash
         run: |
@@ -64,6 +46,16 @@ jobs:
           ./godot --headless --path . --quit-after 3 2>&1 | tee logs/project-startup.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/project-startup.log; then
             echo 'Project startup reported an error.'
+            exit 1
+          fi
+
+      - name: Validate gameplay vertical slice
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./godot --headless --path . --script res://scripts/ci/validate_gameplay.gd 2>&1 | tee logs/gameplay-validation.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/gameplay-validation.log; then
+            echo 'Gameplay validation reported an error.'
             exit 1
           fi
 

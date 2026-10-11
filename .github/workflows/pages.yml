@@ -24,11 +24,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Node for deterministic GLB check
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
       - name: Download Godot and export templates
         shell: bash
         run: |
@@ -42,18 +37,22 @@ jobs:
           unzip -q templates.tpz -d templates
           cp templates/templates/* "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/"
 
-      - name: Import and validate game and character
+      - name: Import and validate project startup
         shell: bash
         run: |
           set -euo pipefail
-          node tools/characters/extend_neko_animations.js --verify
           GODOT="./Godot_v${GODOT_VERSION}-stable_linux.x86_64"
           "$GODOT" --headless --editor --path . --import 2>&1 | tee logs/import.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/import.log; then exit 1; fi
-          "$GODOT" --headless --path . --script res://scripts/ci/validate_character.gd 2>&1 | tee logs/character-validation.log
-          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/character-validation.log; then exit 1; fi
           "$GODOT" --headless --path . --quit-after 3 2>&1 | tee logs/project-startup.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/project-startup.log; then exit 1; fi
+
+      - name: Validate gameplay vertical slice
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./"Godot_v${GODOT_VERSION}-stable_linux.x86_64" --headless --path . --script res://scripts/ci/validate_gameplay.gd 2>&1 | tee logs/gameplay-validation.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|ERROR:' logs/gameplay-validation.log; then exit 1; fi
 
       - name: Export Web Preview
         shell: bash

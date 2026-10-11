@@ -6,7 +6,7 @@ var visual_root: Node3D
 var float_time := 0.0
 
 func _ready() -> void:
-	body_entered.connect(_on_body_entered)
+	add_to_group("interactable")
 	var placeholder := get_node_or_null("Mesh") as MeshInstance3D
 	if placeholder:
 		placeholder.visible = false
@@ -25,10 +25,21 @@ func _process(delta: float) -> void:
 	visual_root.position.y = sin(float_time * 2.2) * 0.075
 	visual_root.rotation.y = sin(float_time * 0.8) * 0.12
 
-func _on_body_entered(body: Node3D) -> void:
-	if body.is_in_group("player"):
-		get_tree().current_scene.collect_pickup(kind)
+func get_interaction_prompt(_player: Node3D) -> String:
+	return "Tekan E untuk mengambil %s" % ("amunisi" if kind == "ammo" else "kotak P3K")
+
+func interact(player: Node3D) -> void:
+	if kind == "ammo":
+		player.call("collect_ammo", 12)
 		queue_free()
+		return
+	if kind == "medkit":
+		player.call("add_item", "medkit")
+		queue_free()
+		return
+	var game := get_tree().get_first_node_in_group("game")
+	if game and game.has_method("interact_with"):
+		game.call("interact_with", self, player)
 
 func _material(color: Color, roughness: float, metallic := 0.0) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()

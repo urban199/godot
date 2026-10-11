@@ -29,3 +29,6 @@ fire={"deadzone":0.5,"events":[Object(InputEventMouseButton,"button_index":1)]}
 reload={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":82)]}
 flashlight={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":70)]}
 interact={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":69)]}
+pause={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":4194305)]}
+inventory={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":4194309)]}
+heal={"deadzone":0.5,"events":[Object(InputEventKey,"physical_keycode":81)]}

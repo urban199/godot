@@ -1,7 +1,6 @@
 extends SceneTree
 
-const FALLBACK_CHARACTER_PATH := "res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_rigged.glb"
-const GENERATED_CHARACTER_PATH := "res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_genshin_style.glb"
+const CHARACTER_MODEL_PATH := "res://assets/characters/player/anime-model.glb"
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const REQUIRED_CLIPS := ["Idle", "Walk", "Run", "Aim", "Shoot", "Reload", "Hit", "Death"]
 const GLTF_SCENE_LOADER := preload("res://scripts/gltf_scene_loader.gd")
@@ -12,10 +11,9 @@ func _initialize() -> void:
 	call_deferred("_run_validation")
 
 func _run_validation() -> void:
-	var character_path := GENERATED_CHARACTER_PATH if FileAccess.file_exists(GENERATED_CHARACTER_PATH) else FALLBACK_CHARACTER_PATH
-	var character_root := GLTF_SCENE_LOADER.load_scene(character_path)
+	var character_root := GLTF_SCENE_LOADER.load_scene(CHARACTER_MODEL_PATH)
 	if character_root == null:
-		_fail("Character GLB could not be parsed into a Godot scene: %s" % character_path)
+		_fail("anime-model.glb could not be parsed into a Godot scene: %s" % CHARACTER_MODEL_PATH)
 		_finish()
 		return
 	root.add_child(character_root)
@@ -26,7 +24,7 @@ func _run_validation() -> void:
 	if skeleton == null:
 		_fail("Imported character has no Skeleton3D.")
 	elif skeleton.get_bone_count() < 18:
-		_fail("Expected the humanoid skeleton (18+ bones); found %d." % skeleton.get_bone_count())
+		_fail("Expected the generated humanoid skeleton (18+ bones); found %d." % skeleton.get_bone_count())
 	elif _find_right_hand_bone(skeleton) < 0:
 		_fail("Humanoid skeleton is missing the right-hand weapon attachment bone.")
 	if mesh_instance == null or mesh_instance.mesh == null:
@@ -48,13 +46,22 @@ func _run_validation() -> void:
 		for surface_index in range(mesh_instance.mesh.get_surface_count()):
 			var surface_material := mesh_instance.get_active_material(surface_index) as BaseMaterial3D
 			if surface_material != null and surface_material.albedo_color.a > 0.0:
-				# The Blender-generated pack uses authored PBR base colors without
-				# image textures; the existing GLB uses an embedded color atlas.
+				# Accept material textures/colors or the source GLB's authored COLOR_0 data.
 				if surface_material.albedo_texture != null or surface_material.albedo_color != Color.WHITE:
 					has_visual_material = true
 					break
+			var arrays: Array = mesh_instance.mesh.surface_get_arrays(surface_index)
+			if arrays.size() > Mesh.ARRAY_COLOR and arrays[Mesh.ARRAY_COLOR] is PackedColorArray:
+				var vertex_colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+				if not vertex_colors.is_empty():
+					for vertex_color in vertex_colors:
+						if vertex_color != Color.WHITE:
+							has_visual_material = true
+							break
+			if has_visual_material:
+				break
 		if not has_visual_material:
-			_fail("Imported character has no visible PBR base-color material or texture.")
+			_fail("Imported character has no visible material, texture, or vertex-color data.")
 	if animation_player == null:
 		_fail("Imported character has no AnimationPlayer.")
 	else:
@@ -71,7 +78,7 @@ func _run_validation() -> void:
 		if player_model == null:
 			_fail("Main scene has no Player/PlayerModel node.")
 		elif not player_model.has_method("uses_imported_model") or not player_model.call("uses_imported_model"):
-			_fail("Main scene fell back instead of instantiating the imported survivor GLB.")
+			_fail("Main scene fell back instead of instantiating assets/characters/player/anime-model.glb.")
 		else:
 			var gameplay_mesh := _find_node_of_type(player_model, MeshInstance3D) as MeshInstance3D
 			if gameplay_mesh == null or not gameplay_mesh.is_visible_in_tree():

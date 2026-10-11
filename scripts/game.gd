@@ -1,9 +1,14 @@
 extends Node3D
 
 var defeated := 0
-var total_enemies := 3
+var total_enemies := 1
 var won := false
 var lost := false
+var power_restored := false
+var pause_open := false
+var inventory_open := false
+var checkpoint_position := Vector3(0, 1, 7)
+const SAVE_SYSTEM = preload("res://scripts/save_system.gd")
 var facade_frame_material: StandardMaterial3D
 var facade_trim_material: StandardMaterial3D
 var facade_roof_detail_material: StandardMaterial3D
@@ -14,40 +19,239 @@ var facade_sign_material: StandardMaterial3D
 @onready var ammo_label: Label = $HUD/Ammo
 @onready var message: Label = $HUD/Message
 @onready var exit_door: MeshInstance3D = $ExitDoor
+var interaction_prompt_label: Label
+var overlay_label: Label
 
 func _ready() -> void:
-    add_to_group("game")
-    player.health_changed.connect(_on_health_changed)
-    player.ammo_changed.connect(_on_ammo_changed)
-    player.fired.connect(_on_fired)
-    objective.text = "Objective: survive and reach the exit"
-    message.text = ""
-    _build_city_district()
+	add_to_group("game")
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	player.health_changed.connect(_on_health_changed)
+	player.ammo_changed.connect(_on_ammo_changed)
+	player.fired.connect(_on_fired)
+	player.process_mode = Node.PROCESS_MODE_PAUSABLE
+	objective.text = "Tujuan: temukan sekering di minimarket"
+	message.text = ""
+	$HUD.process_mode = Node.PROCESS_MODE_ALWAYS
+	_build_vertical_environment()
+	_setup_vertical_slice()
+	_build_runtime_hud()
+	_restore_checkpoint_if_available()
 
 func _process(_delta: float) -> void:
-    if won or lost: return
-    if defeated >= total_enemies:
-        objective.text = "Objective: the exit is unlocked — reach the blue door"
-        exit_door.get_active_material(0).emission_enabled = true
-        if player.global_position.distance_to(exit_door.global_position) < 2.2:
-            won = true
-            message.text = "YOU ESCAPED THE NIGHTFALL\nPress R to restart"
-    if Input.is_key_pressed(KEY_R) and (won or lost): get_tree().reload_current_scene()
+	if pause_open or inventory_open or won or lost: return
+	if defeated >= total_enemies and power_restored:
+		objective.text = "Tujuan: keluar dari distrik melalui gerbang utara"
+		exit_door.get_active_material(0).emission_enabled = true
+	if Input.is_key_pressed(KEY_R) and (won or lost): get_tree().reload_current_scene()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("pause"):
+		toggle_pause_menu()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("inventory") and not pause_open:
+		toggle_inventory_menu()
+		get_viewport().set_input_as_handled()
+
+func toggle_pause_menu() -> void:
+	_toggle_pause()
+
+func toggle_inventory_menu() -> void:
+	if pause_open:
+		return
+	inventory_open = not inventory_open
+	get_tree().paused = inventory_open
+	_refresh_overlay()
+
+func _toggle_pause() -> void:
+	pause_open = not pause_open
+	get_tree().paused = pause_open
+	if not DisplayServer.is_touchscreen_available():
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if pause_open else Input.MOUSE_MODE_CAPTURED
+	player.set_controls_locked(pause_open or inventory_open)
+	_refresh_overlay()
+
+func _build_runtime_hud() -> void:
+	interaction_prompt_label = Label.new()
+	interaction_prompt_label.name = "InteractionPrompt"
+	interaction_prompt_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	interaction_prompt_label.position = Vector2(-240, -92)
+	interaction_prompt_label.size = Vector2(480, 42)
+	interaction_prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	interaction_prompt_label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.64))
+	interaction_prompt_label.add_theme_font_size_override("font_size", 20)
+	$HUD.add_child(interaction_prompt_label)
+	overlay_label = Label.new()
+	overlay_label.name = "MenuOverlay"
+	overlay_label.set_anchors_preset(Control.PRESET_CENTER)
+	overlay_label.position = Vector2(-250, -130)
+	overlay_label.size = Vector2(500, 260)
+	overlay_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	overlay_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	overlay_label.add_theme_color_override("font_color", Color(0.92, 0.94, 1.0))
+	overlay_label.add_theme_font_size_override("font_size", 23)
+	overlay_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.9))
+	overlay_label.add_theme_constant_override("shadow_offset_x", 2)
+	overlay_label.add_theme_constant_override("shadow_offset_y", 2)
+	overlay_label.visible = false
+	$HUD.add_child(overlay_label)
+	$HUD/Objective.text = "Tujuan: temukan sekering di minimarket"
+	$HUD/Health.text = "Kesehatan: %d" % player.health
+	$HUD/Ammo.text = "Amunisi: %d / %d" % [player.ammo, player.reserve_ammo]
+	$HUD/Title.text = "NEKO NIGHTFALL — MALAM TERAKHIR"
+
+func _refresh_overlay() -> void:
+	if not is_instance_valid(overlay_label):
+		return
+	if pause_open:
+		overlay_label.text = "JEDA\nEscape — lanjutkan\nTab — inventaris\nQ — gunakan P3K"
+		overlay_label.visible = true
+	elif inventory_open:
+		var items: Dictionary = player.inventory
+		overlay_label.text = "INVENTARIS\nAmunisi: %d / %d\nP3K: %d\nSekering: %d\nTab — tutup" % [player.ammo, player.reserve_ammo, int(items.get("medkit", 0)), int(items.get("fuse", 0))]
+		overlay_label.visible = true
+	else:
+		overlay_label.visible = false
+	player.set_controls_locked(pause_open or inventory_open)
+
+func set_interaction_prompt(text: String) -> void:
+	if is_instance_valid(interaction_prompt_label):
+		interaction_prompt_label.text = text
+		interaction_prompt_label.visible = not text.is_empty()
+
+func interaction_prompt(target_node: Node3D, _actor: Node3D) -> String:
+	match String(target_node.get("kind")):
+		"fuse": return "E — ambil sekering" if not player.has_item("fuse") else "Sekering sudah diambil"
+		"panel": return "E — pasang sekering" if player.has_item("fuse") and not power_restored else "Panel listrik: perlu sekering"
+		"checkpoint": return "E — simpan di pos pemeriksaan"
+		"exit": return "E — buka gerbang" if power_restored and defeated >= total_enemies else "Gerbang terkunci: aktifkan listrik dan bersihkan ancaman"
+		_: return "E — berinteraksi"
+
+func interact_with(target_node: Node3D, actor: Node3D) -> void:
+	if not is_instance_valid(target_node):
+		return
+	match String(target_node.get("kind")):
+		"fuse":
+			if not actor.has_item("fuse"):
+				actor.add_item("fuse")
+				target_node.queue_free()
+				objective.text = "Tujuan: pasang sekering pada panel listrik"
+		"panel":
+			if actor.consume_item("fuse"):
+				power_restored = true
+				var panel_light := target_node.get_node_or_null("MeshInstance3D") as MeshInstance3D
+				if panel_light and panel_light.mesh:
+					var panel_material := _make_emissive_material(Color(0.12, 0.78, 0.42), 1.5)
+					panel_light.material_override = panel_material
+				objective.text = "Tujuan: kalahkan infected dan capai gerbang"
+		"checkpoint":
+			checkpoint_position = target_node.global_position + Vector3(0, 1, 1.4)
+			_save_checkpoint()
+			message.text = "Pos pemeriksaan tersimpan"
+		"exit":
+			if power_restored and defeated >= total_enemies:
+				won = true
+			actor.call("set_controls_locked", true)
+				message.text = "KAMU BERHASIL KELUAR\nR — mulai ulang"
+	set_interaction_prompt("")
+
+func _setup_vertical_slice() -> void:
+	# Keep one encounter active for the first playable mission slice.
+	for enemy in get_tree().get_nodes_in_group("enemy"):
+		enemy.process_mode = Node.PROCESS_MODE_PAUSABLE
+		if enemy != get_node_or_null("ZombieA"):
+			enemy.remove_from_group("enemy")
+			enemy.queue_free()
+	var door_material := exit_door.get_active_material(0) as StandardMaterial3D
+	if door_material:
+		door_material.emission_enabled = false
+	exit_door.position = Vector3(0, 1.5, -42)
+	_add_interactable("FusePickup", "fuse", Vector3(0, 0.45, -14), Color(0.8, 0.62, 0.12))
+	_add_interactable("PowerPanel", "panel", Vector3(3.2, 1.1, -20), Color(0.52, 0.12, 0.08))
+	_add_interactable("Checkpoint", "checkpoint", Vector3(-3.5, 0.45, -9), Color(0.1, 0.55, 0.48))
+	_add_interactable("ExitInteraction", "exit", Vector3(0, 1.0, -40), Color(0.06, 0.36, 0.82))
+	objective.text = "Tujuan: ambil sekering di ujung gang"
+	var enemy := get_node_or_null("ZombieA")
+	if enemy:
+		enemy.position = Vector3(-2.8, 1, -7)
+
+func _build_vertical_environment() -> void:
+	var asphalt := _make_material(Color(0.075, 0.082, 0.095), 0.96)
+	var concrete := _make_material(Color(0.23, 0.22, 0.21), 0.94)
+	var brick := _make_material(Color(0.19, 0.115, 0.10), 0.92)
+	var trim := _make_material(Color(0.075, 0.082, 0.09), 0.84)
+	var sign_material := _make_emissive_material(Color(0.56, 0.12, 0.08), 0.8)
+	_add_box_prop("SliceRoad", Vector3(0, -0.04, -18), Vector3(18, 0.08, 58), asphalt)
+	_add_box_prop("AlleyWallWest", Vector3(-10, 3.3, -18), Vector3(1.0, 6.6, 60), brick, true)
+	_add_box_prop("AlleyWallEast", Vector3(10, 3.3, -18), Vector3(1.0, 6.6, 60), concrete, true)
+	_add_box_prop("AlleyEndWall", Vector3(0, 3.3, -49), Vector3(21, 6.6, 1.0), brick, true)
+	# Compact shop shell with an open front and traversable interior.
+	_add_box_prop("ShopBackWall", Vector3(0, 2.0, -29), Vector3(10.5, 4.0, 0.45), concrete, true)
+	_add_box_prop("ShopLeftWall", Vector3(-5.2, 2.0, -21.5), Vector3(0.45, 4.0, 15.0), concrete, true)
+	_add_box_prop("ShopRightWall", Vector3(5.2, 2.0, -21.5), Vector3(0.45, 4.0, 15.0), concrete, true)
+	_add_box_prop("ShopRoof", Vector3(0, 4.1, -21.5), Vector3(10.8, 0.3, 15.4), trim)
+	_add_box_prop("ShopSign", Vector3(0, 3.25, -14.0), Vector3(4.8, 0.75, 0.2), sign_material)
+	_add_box_prop("CoverVan", Vector3(-6.6, 0.75, -2.0), Vector3(3.4, 1.5, 6.0), trim, true)
+	_add_box_prop("RoadBarrier", Vector3(6.2, 0.6, -34.0), Vector3(2.2, 1.2, 1.1), brick, true)
+	_add_street_light("SliceStreetLight", Vector3(7.0, 0, -11))
+	_add_street_light("ShopLight", Vector3(-3.8, 0, -24))
+
+func _add_interactable(node_name: String, interaction_kind: String, at: Vector3, color: Color) -> void:
+	var area := Area3D.new()
+	area.name = node_name
+	area.set_script(load("res://scripts/interactable.gd"))
+	area.set("kind", interaction_kind)
+	area.position = at
+	area.collision_layer = 0
+	area.collision_mask = 1
+	var collision := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = 0.8
+	collision.shape = sphere
+	area.add_child(collision)
+	var marker := MeshInstance3D.new()
+	marker.name = "MeshInstance3D"
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.42, 0.72, 0.18)
+	marker.mesh = mesh
+	var marker_material := _make_emissive_material(color, 0.9)
+	marker.material_override = marker_material
+	area.add_child(marker)
+	add_child(area)
+
+func _save_checkpoint() -> void:
+	var data := {"player": player.get_checkpoint_data(), "checkpoint_position": [checkpoint_position.x, checkpoint_position.y, checkpoint_position.z], "power_restored": power_restored, "defeated": defeated}
+	SAVE_SYSTEM.save_checkpoint(data)
+
+func _restore_checkpoint_if_available() -> void:
+	var data: Dictionary = SAVE_SYSTEM.load_checkpoint()
+	if data.is_empty():
+		return
+	var player_data: Variant = data.get("player", {})
+	if player_data is Dictionary:
+		player.restore_checkpoint_data(player_data)
+	var saved_checkpoint: Variant = data.get("checkpoint_position", [])
+	if saved_checkpoint is Array and saved_checkpoint.size() == 3:
+		checkpoint_position = Vector3(float(saved_checkpoint[0]), float(saved_checkpoint[1]), float(saved_checkpoint[2]))
+	power_restored = bool(data.get("power_restored", false))
+	defeated = clampi(int(data.get("defeated", 0)), 0, total_enemies)
+	if defeated >= total_enemies:
+		for enemy in get_tree().get_nodes_in_group("enemy"):
+			enemy.queue_free()
 
 func enemy_defeated() -> void:
-    defeated += 1
-    objective.text = "Enemies remaining: %d" % (total_enemies - defeated)
+	defeated += 1
+	objective.text = "Tujuan: aktifkan listrik di panel" if not power_restored else "Tujuan: capai gerbang utara"
 
 func player_died() -> void:
-    lost = true
-    message.text = "YOU DID NOT MAKE IT OUT\nPress R to restart"
+	lost = true
+	message.text = "KAMU TUMBANG\nR — mulai ulang"
 
 func collect_pickup(kind: String) -> void:
-    if kind == "ammo": player.collect_ammo(12)
-    if kind == "medkit": player.heal(35)
+	if kind == "ammo": player.collect_ammo(12)
+	if kind == "medkit": player.add_item("medkit")
 
-func _on_health_changed(value: int) -> void: health_label.text = "Health: %d" % value
-func _on_ammo_changed(current: int, reserve: int) -> void: ammo_label.text = "Ammo: %d / %d" % [current, reserve]
+func _on_health_changed(value: int) -> void: health_label.text = "Kesehatan: %d" % value
+func _on_ammo_changed(current: int, reserve: int) -> void: ammo_label.text = "Amunisi: %d / %d" % [current, reserve]
 func _on_fired() -> void: message.text = ""
 
 func _build_city_district() -> void:
