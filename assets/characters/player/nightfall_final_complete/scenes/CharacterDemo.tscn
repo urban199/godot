@@ -1,0 +1,19 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://assets/characters/player/nightfall_final_complete/scripts/character_controller.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/characters/player/nightfall_final_complete/models/neko_nightfall_rigged.glb" id="2"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
+radius = 0.22
+height = 1.72
+
+[node name="CharacterDemo" type="Node3D"]
+script = ExtResource("1")
+
+[node name="CharacterBody3D" type="CharacterBody3D" parent="."]
+
+[node name="Model" parent="CharacterBody3D" instance=ExtResource("2")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CharacterBody3D"]
+position = Vector3(0, 0.86, 0)
+shape = SubResource("CapsuleShape3D_1")

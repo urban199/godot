@@ -9,7 +9,10 @@ var action_time := 0.0
 var dying := false
 var visual_root: Node3D
 var imported_model: Node3D
+var imported_animation_player: AnimationPlayer
 var visual_home_y := 0.0
+var imported_action := ""
+var imported_action_serial := 0
 var torso: Node3D
 var head: Node3D
 var left_arm: Node3D
@@ -30,13 +33,17 @@ func _ready() -> void:
 	visual_home_y = visual_root.position.y
 	add_child(visual_root)
 	if role == "survivor":
-		var model_scene := load("res://assets/characters/player/nightfall_survivor/model/neko_nightfall_anime_survivor_A.glb") as PackedScene
+		var model_scene := load("res://assets/characters/player/nightfall_final_complete_UV_fixed/models/neko_nightfall_rigged.glb") as PackedScene
 		if model_scene:
 			imported_model = model_scene.instantiate() as Node3D
 			if imported_model:
-				imported_model.name = "NekoNightfallAnime3D_A"
+				imported_model.name = "NekoNightfallRigged"
 				visual_root.add_child(imported_model)
-				_hide_duplicate_imported_pistol(imported_model)
+				imported_animation_player = _find_animation_player(imported_model)
+				if not imported_animation_player:
+					push_warning("Neko Nightfall rig loaded without an AnimationPlayer; using the static pose.")
+				else:
+					_play_imported_clip("Idle")
 			else:
 				push_error("Neko Nightfall GLB root is not a Node3D.")
 		else:
@@ -47,11 +54,29 @@ func _ready() -> void:
 func set_moving(value: bool, is_sprinting := false) -> void:
 	moving = value
 	sprinting = is_sprinting
+	if is_instance_valid(imported_animation_player) and imported_action.is_empty():
+		var wanted_clip := "Run" if moving and sprinting else "Walk" if moving else "Idle"
+		_play_imported_clip(wanted_clip)
 
 func uses_imported_model() -> bool:
 	return is_instance_valid(imported_model)
 
 func play_action(animation_name: StringName, _return_to_locomotion := true) -> float:
+	if is_instance_valid(imported_animation_player):
+		var requested := String(animation_name).to_lower()
+		var imported_clip := "Shoot" if "shoot" in requested else "Reload" if "reload" in requested else "Aim" if "aim" in requested else ""
+		if not imported_clip.is_empty():
+			var duration := _play_imported_clip(imported_clip)
+			if duration > 0.0:
+				imported_action = imported_clip
+				imported_action_serial += 1
+				var action_serial := imported_action_serial
+				get_tree().create_timer(duration).timeout.connect(func() -> void:
+					if imported_action_serial == action_serial:
+						imported_action = ""
+						_update_imported_locomotion()
+				)
+				return duration
 	if animation_name == &"die":
 		dying = true
 		return 0.7
@@ -66,9 +91,9 @@ func _process(delta: float) -> void:
 	action_time = maxf(action_time - delta, 0.0)
 	animation_time += delta * (10.0 if sprinting else 7.0 if moving else 1.7)
 	if is_instance_valid(imported_model):
-		# This asset has no skeleton or clips; use a subtle whole-model idle/move
-		# bob without pretending its limbs are animated.
 		visual_root.position.y = visual_home_y + sin(animation_time * 2.0) * (0.018 if moving else 0.006)
+		if dying:
+			visual_root.rotation.z = move_toward(visual_root.rotation.z, PI * 0.48, delta * 3.2)
 		return
 	var stride := 0.52 if sprinting else 0.38 if moving else 0.025
 	left_leg.rotation.x = sin(animation_time) * stride
@@ -89,15 +114,32 @@ func _process(delta: float) -> void:
 		torso.rotation.z = sin(animation_time * 0.5) * (0.035 if moving else 0.012)
 		head.rotation.y = sin(animation_time * 0.35) * 0.035
 
-func _hide_duplicate_imported_pistol(root: Node) -> void:
-	# The project already attaches its functional weapon to PlayerModel.
-	# Hide only the GLB's separate decorative pistol mesh; retain the holster.
+func _find_animation_player(root: Node) -> AnimationPlayer:
+	if root is AnimationPlayer:
+		return root as AnimationPlayer
 	for child in root.get_children():
-		if child is MeshInstance3D:
-			var mesh_child := child as MeshInstance3D
-			if mesh_child.name in ["Pistol_Slide", "Pistol_Grip", "Pistol_Muzzle"]:
-				mesh_child.visible = false
-		_hide_duplicate_imported_pistol(child)
+		var found := _find_animation_player(child)
+		if found:
+			return found
+	return null
+
+func _play_imported_clip(wanted: String) -> float:
+	if not is_instance_valid(imported_animation_player):
+		return 0.0
+	for clip in imported_animation_player.get_animation_list():
+		var clip_name := String(clip)
+		if clip_name.to_lower() == wanted.to_lower() or clip_name.to_lower().ends_with("/" + wanted.to_lower()):
+			if imported_animation_player.current_animation != clip_name:
+				imported_animation_player.play(clip_name)
+			var animation := imported_animation_player.get_animation(clip_name)
+			return animation.length if animation else 0.0
+	return 0.0
+
+func _update_imported_locomotion() -> void:
+	if not is_instance_valid(imported_animation_player) or not imported_action.is_empty():
+		return
+	var wanted_clip := "Run" if moving and sprinting else "Walk" if moving else "Idle"
+	_play_imported_clip(wanted_clip)
 
 func _toon(color: Color, roughness := 0.72, metallic := 0.0) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()

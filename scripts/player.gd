@@ -245,6 +245,7 @@ func shoot() -> void:
 func reload_weapon() -> void:
     if ammo >= 6 or reserve_ammo <= 0: return
     reload_animation = 1.0
+    player_model.call("play_action", "Reload")
     var needed := 6 - ammo
     var loaded: int = mini(needed, reserve_ammo)
     ammo += loaded
