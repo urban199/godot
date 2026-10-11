@@ -16,7 +16,7 @@ var health := 100
 var ammo := 6
 var reserve_ammo := 24
 var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
-var pitch := -0.18
+var pitch := -0.32
 var camera_yaw := 0.0
 var shoulder_side := 1.0
 var can_shoot := true
@@ -48,6 +48,7 @@ var weapon_base_position := Vector3.ZERO
 
 func _ready() -> void:
     add_to_group("player")
+    player_model.visible = true
     health = max_health
     weapon_home_position = weapon_view.position
     weapon_base_position = weapon_home_position

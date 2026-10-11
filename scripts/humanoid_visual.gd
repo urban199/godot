@@ -32,21 +32,30 @@ func _ready() -> void:
 	visual_home_y = visual_root.position.y
 	add_child(visual_root)
 	if role == "survivor":
-		var model_scene := load("res://assets/characters/player/nightfall_final_complete_UV_fixed/models/neko_nightfall_rigged.glb") as PackedScene
+		var model_scene := load("res://assets/characters/player/neko_nightfall_character_full/models/neko_nightfall_rigged.glb") as PackedScene
 		if model_scene:
 			imported_model = model_scene.instantiate() as Node3D
 			if imported_model:
 				imported_model.name = "NekoNightfallRigged"
 				visual_root.add_child(imported_model)
-				imported_animation_player = _find_animation_player(imported_model)
-				if not imported_animation_player:
-					push_warning("Neko Nightfall rig loaded without an AnimationPlayer; using the static pose.")
+				var character_mesh := _find_character_mesh(imported_model)
+				var character_skeleton := _find_character_skeleton(imported_model)
+				if character_mesh and character_skeleton:
+					_prepare_imported_visual(imported_model)
+					imported_animation_player = _find_animation_player(imported_model)
+					if imported_animation_player:
+						_play_imported_clip("Idle")
+					else:
+						push_warning("Neko Nightfall rig has no AnimationPlayer; keeping its bind pose.")
 				else:
-					_play_imported_clip("Idle")
+					push_warning("Neko Nightfall import has no usable mesh/skeleton; showing the built-in survivor instead.")
+					_use_procedural_survivor()
 			else:
 				push_error("Neko Nightfall GLB root is not a Node3D.")
+				_use_procedural_survivor()
 		else:
 			push_error("Could not load Neko Nightfall character GLB.")
+			_use_procedural_survivor()
 	else:
 		_build_zombie()
 
@@ -121,6 +130,51 @@ func _find_animation_player(root: Node) -> AnimationPlayer:
 		if found:
 			return found
 	return null
+
+func _find_character_mesh(root: Node) -> MeshInstance3D:
+	if root is MeshInstance3D and (root as MeshInstance3D).mesh != null:
+		return root as MeshInstance3D
+	for child in root.get_children():
+		var found := _find_character_mesh(child)
+		if found:
+			return found
+	return null
+
+func _find_character_skeleton(root: Node) -> Skeleton3D:
+	if root is Skeleton3D:
+		return root as Skeleton3D
+	for child in root.get_children():
+		var found := _find_character_skeleton(child)
+		if found:
+			return found
+	return null
+
+func _prepare_imported_visual(root: Node) -> void:
+	if root is Node3D:
+		(root as Node3D).visible = true
+	if root is MeshInstance3D:
+		var mesh_instance := root as MeshInstance3D
+		if mesh_instance.mesh:
+			for surface_index in range(mesh_instance.mesh.get_surface_count()):
+				var source_material := mesh_instance.get_active_material(surface_index)
+				if source_material is BaseMaterial3D:
+					var opaque_material := source_material.duplicate() as BaseMaterial3D
+					opaque_material.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+					var opaque_color := opaque_material.albedo_color
+					opaque_color.a = 1.0
+					opaque_material.albedo_color = opaque_color
+					mesh_instance.set_surface_override_material(surface_index, opaque_material)
+	for child in root.get_children():
+		_prepare_imported_visual(child)
+
+func _use_procedural_survivor() -> void:
+	if is_instance_valid(imported_model):
+		imported_model.queue_free()
+	imported_model = null
+	imported_animation_player = null
+	visual_root.position.y = -0.18
+	visual_home_y = visual_root.position.y
+	_build_survivor()
 
 func _play_imported_clip(wanted: String) -> float:
 	if not is_instance_valid(imported_animation_player):

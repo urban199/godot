@@ -4,6 +4,10 @@ var defeated := 0
 var total_enemies := 3
 var won := false
 var lost := false
+var facade_frame_material: StandardMaterial3D
+var facade_trim_material: StandardMaterial3D
+var facade_roof_detail_material: StandardMaterial3D
+var facade_sign_material: StandardMaterial3D
 @onready var player = $Player
 @onready var objective: Label = $HUD/Objective
 @onready var health_label: Label = $HUD/Health
@@ -47,6 +51,7 @@ func _on_ammo_changed(current: int, reserve: int) -> void: ammo_label.text = "Am
 func _on_fired() -> void: message.text = ""
 
 func _build_city_district() -> void:
+    _ensure_facade_detail_materials()
     var building_materials: Array[StandardMaterial3D] = []
     for color in [Color(0.16, 0.22, 0.32), Color(0.32, 0.18, 0.24), Color(0.16, 0.32, 0.30), Color(0.38, 0.25, 0.14), Color(0.24, 0.18, 0.38)]:
         var material := StandardMaterial3D.new()
@@ -102,6 +107,7 @@ func _build_city_district() -> void:
         add_child(body)
 
         _add_window_strip(body, sizes[index], index)
+        _add_facade_architecture(body, sizes[index], index)
 
     _add_expanded_city()
     _add_city_detail()
@@ -151,7 +157,10 @@ func _add_expanded_city() -> void:
             collision.shape = shape
             building.add_child(collision)
             add_child(building)
-            _add_window_strip(building, size, building_index + 1)
+            var detailed_building := building_index % 3 == 0
+            _add_window_strip(building, size, building_index + 1, detailed_building)
+            if detailed_building:
+                _add_facade_architecture(building, size, building_index + 1)
             building_index += 1
 
     # Sparse, weak street lamps and abandoned cars extend the horror atmosphere into the outskirts.
@@ -163,22 +172,48 @@ func _add_expanded_city() -> void:
     for i in range(wreck_positions.size()):
         _add_abandoned_car("OuterWreck_%02d" % i, wreck_positions[i], _make_material(Color(0.16, 0.055, 0.045, 1.0), 0.9), i % 2 == 0)
 
-func _add_window_strip(parent: Node3D, size: Vector3, index: int) -> void:
-    var window_material := StandardMaterial3D.new()
-    var window_colors := [Color(1.0, 0.27, 0.08), Color(0.10, 0.65, 1.0), Color(0.75, 0.20, 1.0), Color(1.0, 0.72, 0.12)]
-    window_material.albedo_color = window_colors[index % window_colors.size()]
-    window_material.emission_enabled = true
-    window_material.emission = window_colors[index % window_colors.size()]
-    window_material.emission_energy_multiplier = 1.4
+func _add_window_strip(parent: Node3D, size: Vector3, index: int, detailed := true) -> void:
+    var window_colors := [Color(0.82, 0.24, 0.09), Color(0.12, 0.46, 0.66), Color(0.48, 0.18, 0.62), Color(0.76, 0.52, 0.16)]
+    var window_material := _make_emissive_material(window_colors[index % window_colors.size()], 0.75)
+    var dark_glass := _make_material(Color(0.025, 0.045, 0.065, 1.0), 0.28)
+    var window_width := maxf(1.3, size.x * 0.42)
+    var front_z := -size.z * 0.5 - 0.08
 
     for row in range(3):
-        var window := MeshInstance3D.new()
-        var window_mesh := BoxMesh.new()
-        window_mesh.size = Vector3(maxf(1.3, size.x * 0.42), 0.72, 0.10)
-        window_mesh.material = window_material
-        window.mesh = window_mesh
-        window.position = Vector3(-size.x * 0.12, -size.y * 0.30 + row * 2.15, -size.z * 0.5 - 0.08)
-        parent.add_child(window)
+        var window_y := -size.y * 0.30 + row * 2.15
+        var glass_material := dark_glass if (row + index) % 4 == 0 else window_material
+        var window_position := Vector3(-size.x * 0.12, window_y, front_z)
+        if detailed:
+            _add_child_box(parent, "WindowFrame_%d" % row, Vector3(window_width + 0.28, 0.96, 0.14), window_position, facade_frame_material)
+            _add_child_box(parent, "WindowGlass_%d" % row, Vector3(window_width, 0.68, 0.055), window_position + Vector3(0, 0, -0.095), glass_material)
+            _add_child_box(parent, "WindowSill_%d" % row, Vector3(window_width + 0.42, 0.10, 0.22), window_position + Vector3(0, -0.52, -0.04), facade_trim_material)
+        else:
+            _add_child_box(parent, "WindowGlass_%d" % row, Vector3(window_width, 0.72, 0.10), window_position, glass_material)
+
+func _ensure_facade_detail_materials() -> void:
+    if facade_frame_material:
+        return
+    facade_frame_material = _make_material(Color(0.055, 0.065, 0.078, 1.0), 0.62)
+    facade_trim_material = _make_material(Color(0.27, 0.29, 0.31, 1.0), 0.78)
+    facade_roof_detail_material = _make_material(Color(0.075, 0.085, 0.095, 1.0), 0.86)
+    facade_sign_material = _make_emissive_material(Color(0.42, 0.055, 0.035, 1.0), 0.9)
+
+func _add_facade_architecture(parent: Node3D, size: Vector3, index: int) -> void:
+    var front_z := -size.z * 0.5 - 0.10
+    var column_height := maxf(size.y - 0.45, 1.0)
+    for side in [-1.0, 1.0]:
+        _add_child_box(parent, "FacadePier_%s" % str(side), Vector3(0.22, column_height, 0.20), Vector3(side * (size.x * 0.5 - 0.18), 0, front_z), facade_trim_material)
+    var floor_count := floori(size.y / 3.0)
+    for floor_index in range(1, floor_count):
+        var band_y := -size.y * 0.5 + floor_index * 3.0
+        _add_child_box(parent, "FloorBand_%d" % floor_index, Vector3(size.x + 0.16, 0.12, 0.20), Vector3(0, band_y, front_z), facade_trim_material)
+    # Rooftop HVAC units and exhaust stacks add a readable skyline without lights or heavy assets.
+    for unit_index in range(2):
+        var unit_x := -size.x * 0.22 + unit_index * size.x * 0.44
+        _add_child_box(parent, "RoofHVAC_%d" % unit_index, Vector3(1.5, 0.72, 1.1), Vector3(unit_x, size.y * 0.5 + 0.52, 0), facade_roof_detail_material)
+        _add_child_box(parent, "RoofHVACGrille_%d" % unit_index, Vector3(0.92, 0.10, 0.07), Vector3(unit_x, size.y * 0.5 + 0.54, -0.57), facade_trim_material)
+    if index % 5 == 0:
+        _add_child_box(parent, "FadedShopSign", Vector3(minf(size.x * 0.48, 4.8), 0.52, 0.12), Vector3(0, -size.y * 0.5 + 3.35, front_z - 0.12), facade_sign_material)
 
 func _add_city_detail() -> void:
     var asphalt := _make_material(Color(0.055, 0.06, 0.07, 1.0), 0.96)
