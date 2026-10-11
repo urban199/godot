@@ -110,7 +110,7 @@ func _validate_animations(animation_player: AnimationPlayer) -> void:
 		var matched_name := ""
 		for clip_name in animations:
 			var candidate := String(clip_name)
-			var expected_lower := expected_name.to_lower()
+			var expected_lower: String = String(expected_name).to_lower()
 			if candidate.to_lower() == expected_lower or candidate.to_lower().ends_with("/" + expected_lower) or candidate.to_lower().ends_with("|" + expected_lower):
 				matched_name = candidate
 				break
