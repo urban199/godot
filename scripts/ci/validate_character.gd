@@ -43,6 +43,29 @@ func _run_validation() -> void:
             var uvs: PackedVector2Array = surface_arrays[Mesh.ARRAY_TEX_UV]
             if vertices.is_empty() or uvs.size() != vertices.size():
                 _fail("Imported character surface is missing vertex geometry or matching UV0 coordinates.")
+        var mesh_instances: Array[MeshInstance3D] = []
+        _collect_mesh_instances(character_root, mesh_instances)
+        var weighted_bones: Dictionary = {}
+        for skinned_mesh in mesh_instances:
+            if skinned_mesh.mesh == null or skinned_mesh.skin == null:
+                continue
+            for surface_index in range(skinned_mesh.mesh.get_surface_count()):
+                var skin_arrays: Array = skinned_mesh.mesh.surface_get_arrays(surface_index)
+                var bone_data: Variant = skin_arrays[Mesh.ARRAY_BONES]
+                var weight_data: Variant = skin_arrays[Mesh.ARRAY_WEIGHTS]
+                if not bone_data is PackedInt32Array or not weight_data is PackedFloat32Array:
+                    continue
+                var bone_indices: PackedInt32Array = bone_data
+                var bone_weights: PackedFloat32Array = weight_data
+                if bone_indices.size() != bone_weights.size():
+                    continue
+                for influence_index in range(bone_weights.size()):
+                    if bone_weights[influence_index] > 0.001:
+                        weighted_bones[int(bone_indices[influence_index])] = true
+        if weighted_bones.size() < 10:
+            _fail("Skinned character only has %d weighted bones; expected a usable humanoid body rig." % weighted_bones.size())
+        else:
+            print("Verified weighted humanoid bones: ", weighted_bones.size())
         var has_visual_material := false
         for surface_index in range(mesh_instance.mesh.get_surface_count()):
             var surface_material := mesh_instance.get_active_material(surface_index) as BaseMaterial3D

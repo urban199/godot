@@ -121,11 +121,11 @@ def mesh_bone_name(obj, center):
         return "Head"
     if "neck" in name:
         return "Neck"
-    if any(token in name for token in ("hand", "cuff")) and side:
+    if "hand" in name and side:
         return f"Hand_{side}"
-    if any(token in name for token in ("forearm", "lower_arm", "sleeve")) and side:
+    if any(token in name for token in ("forearm", "lower_arm", "cuff")) and side:
         return f"LowerArm_{side}"
-    if any(token in name for token in ("arm", "shoulder")) and side:
+    if any(token in name for token in ("upper_arm", "arm", "shoulder", "sleeve")) and side:
         return f"UpperArm_{side}"
     if any(token in name for token in ("shoe", "boot", "toe", "foot")) and side:
         return f"Foot_{side}"
@@ -143,7 +143,43 @@ def mesh_bone_name(obj, center):
     return "Spine"
 
 
-def add_skinning(meshes, rig, center):
+def related_bones(mesh_name, primary_bone):
+    """Return only anatomically adjacent joints for smooth local weighting."""
+    name = mesh_name.lower()
+    if any(token in name for token in ("face", "eye", "iris", "pupil", "brow", "nose", "mouth", "ear", "hair", "bang", "bob", "pin")):
+        return ["Head"]
+    if "neck" in name:
+        return ["Chest", "Neck", "Head"]
+    if any(token in name for token in ("skirt", "pleat", "waist_band", "belt")):
+        return ["Hips"]
+    if any(token in name for token in ("bodice", "chest", "torso", "neck")):
+        return ["Hips", "Spine", "Chest", "Neck"]
+
+    side = "L" if primary_bone.endswith("_L") else "R" if primary_bone.endswith("_R") else ""
+    if not side:
+        return [primary_bone]
+    adjacent = {
+        f"UpperArm_{side}": [f"UpperArm_{side}", f"LowerArm_{side}"],
+        f"LowerArm_{side}": [f"UpperArm_{side}", f"LowerArm_{side}", f"Hand_{side}"],
+        f"Hand_{side}": [f"LowerArm_{side}", f"Hand_{side}"],
+        f"UpperLeg_{side}": [f"UpperLeg_{side}", f"LowerLeg_{side}"],
+        f"LowerLeg_{side}": [f"UpperLeg_{side}", f"LowerLeg_{side}", f"Foot_{side}"],
+        f"Foot_{side}": [f"LowerLeg_{side}", f"Foot_{side}"],
+    }
+    return adjacent.get(primary_bone, [primary_bone])
+
+
+def distance_to_segment(point, start, end):
+    segment = end - start
+    length_squared = segment.length_squared
+    if length_squared <= 1e-10:
+        return (point - start).length
+    factor = max(0.0, min(1.0, (point - start).dot(segment) / length_squared))
+    return (point - (start + segment * factor)).length
+
+
+def add_skinning(meshes, rig, center, bone_positions):
+    blend_width = 0.12
     for obj in meshes:
         # Make reruns deterministic when Actions imports the already-rigged
         # output from a previous successful push.
@@ -155,9 +191,26 @@ def add_skinning(meshes, rig, center):
                 obj.modifiers.remove(modifier)
         for group in list(obj.vertex_groups):
             obj.vertex_groups.remove(group)
-        bone_name = mesh_bone_name(obj, center)
-        group = obj.vertex_groups.get(bone_name) or obj.vertex_groups.new(name=bone_name)
-        group.add(list(range(len(obj.data.vertices))), 1.0, "REPLACE")
+        primary_bone = mesh_bone_name(obj, center)
+        candidate_names = related_bones(obj.name, primary_bone)
+        groups = {
+            name: obj.vertex_groups.get(name) or obj.vertex_groups.new(name=name)
+            for name in candidate_names
+        }
+        for vertex in obj.data.vertices:
+            world_position = obj.matrix_world @ vertex.co
+            ordered = sorted(
+                (distance_to_segment(world_position, Vector(bone_positions[name][0]), Vector(bone_positions[name][1])), name)
+                for name in candidate_names
+            )
+            nearest_distance, nearest_name = ordered[0]
+            if len(ordered) > 1 and ordered[1][0] - nearest_distance < blend_width:
+                second_distance, second_name = ordered[1]
+                nearest_weight = 0.5 + (second_distance - nearest_distance) / (2.0 * blend_width)
+                groups[nearest_name].add([vertex.index], min(1.0, nearest_weight), "REPLACE")
+                groups[second_name].add([vertex.index], 1.0 - min(1.0, nearest_weight), "REPLACE")
+            else:
+                groups[nearest_name].add([vertex.index], 1.0, "REPLACE")
         modifier = obj.modifiers.new("Neko_Armature_Deform", "ARMATURE")
         modifier.object = rig
         obj.parent = rig
@@ -262,7 +315,7 @@ def main():
             bpy.data.objects.remove(obj, do_unlink=True)
     ensure_uvs(meshes)
     rig, _positions, center = build_rig(minimum, maximum)
-    add_skinning(meshes, rig, center)
+    add_skinning(meshes, rig, center, _positions)
     actions = create_animations(rig)
     bpy.ops.object.select_all(action="DESELECT")
     rig.select_set(True)
