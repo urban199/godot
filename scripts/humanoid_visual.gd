@@ -1,5 +1,8 @@
 extends Node3D
 
+const GLTF_SCENE_LOADER := preload("res://scripts/gltf_scene_loader.gd")
+const SURVIVOR_MODEL_PATH := "res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_rigged.glb"
+
 @export_enum("survivor", "zombie") var role := "survivor"
 
 var moving := false
@@ -35,31 +38,25 @@ func _ready() -> void:
 	visual_home_y = visual_root.position.y
 	add_child(visual_root)
 	if role == "survivor":
-		var model_scene := load("res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_rigged.glb") as PackedScene
-		if model_scene:
-			imported_model = model_scene.instantiate() as Node3D
-			if imported_model:
-				imported_model.name = "NekoNightfallRigged"
-				visual_root.add_child(imported_model)
-				var character_mesh := _find_character_mesh(imported_model)
-				var character_skeleton := _find_character_skeleton(imported_model)
-				if character_mesh and character_skeleton:
-					imported_skeleton = character_skeleton
-					weapon_socket = _create_weapon_socket(character_skeleton)
-					_prepare_imported_visual(imported_model)
-					imported_animation_player = _find_animation_player(imported_model)
-					if imported_animation_player:
-						_play_imported_clip("Idle")
-					else:
-						push_warning("Neko Nightfall rig has no AnimationPlayer; keeping its bind pose.")
+		imported_model = GLTF_SCENE_LOADER.load_scene(SURVIVOR_MODEL_PATH)
+		if imported_model:
+			imported_model.name = "NekoNightfallRigged"
+			visual_root.add_child(imported_model)
+			var character_mesh := _find_character_mesh(imported_model)
+			var character_skeleton := _find_character_skeleton(imported_model)
+			if character_mesh and character_skeleton:
+				imported_skeleton = character_skeleton
+				weapon_socket = _create_weapon_socket(character_skeleton)
+				_prepare_imported_visual(imported_model)
+				imported_animation_player = _find_animation_player(imported_model)
+				if imported_animation_player:
+					_play_imported_clip("Idle")
 				else:
-					push_warning("Neko Nightfall import has no usable mesh/skeleton; showing the built-in survivor instead.")
-					_use_procedural_survivor()
-			else:
-				push_error("Neko Nightfall GLB root is not a Node3D.")
-				_use_procedural_survivor()
+					push_warning("Neko Nightfall rig has no AnimationPlayer; keeping its bind pose.")
 		else:
-			push_error("Could not load Neko Nightfall character GLB.")
+			_use_procedural_survivor()
+		if is_instance_valid(imported_model) and (not _find_character_mesh(imported_model) or not _find_character_skeleton(imported_model)):
+			push_warning("Neko Nightfall GLB has no usable mesh/skeleton; showing the built-in survivor instead.")
 			_use_procedural_survivor()
 	else:
 		_build_zombie()

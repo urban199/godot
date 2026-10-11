@@ -3,6 +3,7 @@ extends SceneTree
 const CHARACTER_PATH := "res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_rigged.glb"
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const REQUIRED_CLIPS := ["Idle", "Walk", "Run", "Aim", "Shoot", "Reload", "Hit", "Death"]
+const GLTF_SCENE_LOADER := preload("res://scripts/gltf_scene_loader.gd")
 
 var errors: Array[String] = []
 
@@ -10,13 +11,11 @@ func _initialize() -> void:
 	call_deferred("_run_validation")
 
 func _run_validation() -> void:
-	var character_scene := load(CHARACTER_PATH) as PackedScene
-	if character_scene == null:
-		_fail("Character GLB did not import as a PackedScene: %s" % CHARACTER_PATH)
+	var character_root := GLTF_SCENE_LOADER.load_scene(CHARACTER_PATH)
+	if character_root == null:
+		_fail("Character GLB could not be parsed into a Godot scene: %s" % CHARACTER_PATH)
 		_finish()
 		return
-
-	var character_root := character_scene.instantiate()
 	root.add_child(character_root)
 	await process_frame
 	var skeleton := _find_node_of_type(character_root, Skeleton3D) as Skeleton3D
