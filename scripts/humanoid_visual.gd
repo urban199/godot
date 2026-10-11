@@ -1,6 +1,7 @@
 extends Node3D
 
 const GLTF_SCENE_LOADER := preload("res://scripts/gltf_scene_loader.gd")
+const GENSHIN_STYLE_MODEL_PATH := "res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_genshin_style.glb"
 const SURVIVOR_MODEL_PATH := "res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_rigged.glb"
 
 @export_enum("survivor", "zombie") var role := "survivor"
@@ -38,7 +39,8 @@ func _ready() -> void:
 	visual_home_y = visual_root.position.y
 	add_child(visual_root)
 	if role == "survivor":
-		imported_model = GLTF_SCENE_LOADER.load_scene(SURVIVOR_MODEL_PATH)
+		var model_path := GENSHIN_STYLE_MODEL_PATH if FileAccess.file_exists(GENSHIN_STYLE_MODEL_PATH) else SURVIVOR_MODEL_PATH
+		imported_model = GLTF_SCENE_LOADER.load_scene(model_path)
 		if imported_model:
 			imported_model.name = "NekoNightfallRigged"
 			visual_root.add_child(imported_model)
@@ -169,7 +171,13 @@ func _find_character_skeleton(root: Node) -> Skeleton3D:
 func _create_weapon_socket(skeleton: Skeleton3D) -> BoneAttachment3D:
 	var hand_index := skeleton.find_bone("Hand_R")
 	if hand_index < 0:
-		push_warning("Neko Nightfall rig has no Hand_R bone; keeping the weapon on the player model.")
+		for bone_index in range(skeleton.get_bone_count()):
+			var normalized_name := skeleton.get_bone_name(bone_index).to_lower().replace("_", "").replace(".", "").replace("-", "")
+			if normalized_name in ["handr", "righthand"]:
+				hand_index = bone_index
+				break
+	if hand_index < 0:
+		push_warning("Neko Nightfall rig has no right-hand bone; keeping the weapon on the player model.")
 		return null
 	var socket := BoneAttachment3D.new()
 	socket.name = "WeaponSocket"
@@ -209,9 +217,10 @@ func _use_procedural_survivor() -> void:
 func _play_imported_clip(wanted: String) -> float:
 	if not is_instance_valid(imported_animation_player):
 		return 0.0
+	var wanted_lower := wanted.to_lower()
 	for clip in imported_animation_player.get_animation_list():
 		var clip_name := String(clip)
-		if clip_name.to_lower() == wanted.to_lower() or clip_name.to_lower().ends_with("/" + wanted.to_lower()):
+		if clip_name.to_lower() == wanted_lower or clip_name.to_lower().ends_with("/" + wanted_lower) or clip_name.to_lower().ends_with("|" + wanted_lower):
 			var animation: Animation = imported_animation_player.get_animation(clip_name)
 			if animation:
 				animation.loop_mode = Animation.LOOP_LINEAR if wanted.to_lower() in ["idle", "walk", "run", "aim"] else Animation.LOOP_NONE

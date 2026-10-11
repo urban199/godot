@@ -1,6 +1,7 @@
 extends SceneTree
 
-const CHARACTER_PATH := "res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_rigged.glb"
+const FALLBACK_CHARACTER_PATH := "res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_rigged.glb"
+const GENERATED_CHARACTER_PATH := "res://assets/characters/player/neko_nightfall_anime_complete/models/neko_nightfall_genshin_style.glb"
 const MAIN_SCENE_PATH := "res://scenes/main.tscn"
 const REQUIRED_CLIPS := ["Idle", "Walk", "Run", "Aim", "Shoot", "Reload", "Hit", "Death"]
 const GLTF_SCENE_LOADER := preload("res://scripts/gltf_scene_loader.gd")
@@ -11,9 +12,10 @@ func _initialize() -> void:
 	call_deferred("_run_validation")
 
 func _run_validation() -> void:
-	var character_root := GLTF_SCENE_LOADER.load_scene(CHARACTER_PATH)
+	var character_path := GENERATED_CHARACTER_PATH if FileAccess.file_exists(GENERATED_CHARACTER_PATH) else FALLBACK_CHARACTER_PATH
+	var character_root := GLTF_SCENE_LOADER.load_scene(character_path)
 	if character_root == null:
-		_fail("Character GLB could not be parsed into a Godot scene: %s" % CHARACTER_PATH)
+		_fail("Character GLB could not be parsed into a Godot scene: %s" % character_path)
 		_finish()
 		return
 	root.add_child(character_root)
@@ -25,7 +27,7 @@ func _run_validation() -> void:
 		_fail("Imported character has no Skeleton3D.")
 	elif skeleton.get_bone_count() < 18:
 		_fail("Expected the humanoid skeleton (18+ bones); found %d." % skeleton.get_bone_count())
-	elif skeleton.find_bone("Hand_R") < 0:
+	elif _find_right_hand_bone(skeleton) < 0:
 		_fail("Humanoid skeleton is missing the right-hand weapon attachment bone.")
 	if mesh_instance == null or mesh_instance.mesh == null:
 		_fail("Imported character has no mesh geometry.")
@@ -42,14 +44,17 @@ func _run_validation() -> void:
 			var uvs: PackedVector2Array = surface_arrays[Mesh.ARRAY_TEX_UV]
 			if vertices.is_empty() or uvs.size() != vertices.size():
 				_fail("Imported character surface is missing vertex geometry or matching UV0 coordinates.")
-		var has_albedo_texture := false
+		var has_visual_material := false
 		for surface_index in range(mesh_instance.mesh.get_surface_count()):
 			var surface_material := mesh_instance.get_active_material(surface_index) as BaseMaterial3D
-			if surface_material != null and surface_material.albedo_texture != null:
-				has_albedo_texture = true
-				break
-		if not has_albedo_texture:
-			_fail("Imported character materials do not resolve an albedo texture resource.")
+			if surface_material != null and surface_material.albedo_color.a > 0.0:
+				# The Blender-generated pack uses authored PBR base colors without
+				# image textures; the existing GLB uses an embedded color atlas.
+				if surface_material.albedo_texture != null or surface_material.albedo_color != Color.WHITE:
+					has_visual_material = true
+					break
+		if not has_visual_material:
+			_fail("Imported character has no visible PBR base-color material or texture.")
 	if animation_player == null:
 		_fail("Imported character has no AnimationPlayer.")
 	else:
@@ -105,7 +110,8 @@ func _validate_animations(animation_player: AnimationPlayer) -> void:
 		var matched_name := ""
 		for clip_name in animations:
 			var candidate := String(clip_name)
-			if candidate.to_lower() == expected_name.to_lower() or candidate.to_lower().ends_with("/" + expected_name.to_lower()):
+			var expected_lower := expected_name.to_lower()
+			if candidate.to_lower() == expected_lower or candidate.to_lower().ends_with("/" + expected_lower) or candidate.to_lower().ends_with("|" + expected_lower):
 				matched_name = candidate
 				break
 		if matched_name.is_empty():
@@ -144,6 +150,16 @@ func _find_node_named(current: Node, wanted_name: String) -> Node:
 		if found != null:
 			return found
 	return null
+
+func _find_right_hand_bone(skeleton: Skeleton3D) -> int:
+	var exact_match := skeleton.find_bone("Hand_R")
+	if exact_match >= 0:
+		return exact_match
+	for bone_index in range(skeleton.get_bone_count()):
+		var normalized_name := skeleton.get_bone_name(bone_index).to_lower().replace("_", "").replace(".", "").replace("-", "")
+		if normalized_name in ["handr", "righthand"]:
+			return bone_index
+	return -1
 
 func _fail(message: String) -> void:
 	errors.append(message)

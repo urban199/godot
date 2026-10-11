@@ -9,6 +9,7 @@
 - The existing `AnimationPlayer` is retained, with short transitions between locomotion/aim clips and combat one-shots; locomotion loops while combat/reaction clips are configured as non-looping.
 - `Hit` and `Death` contain distinct authored rotation/translation keys generated from the existing 18-joint rig by `tools/characters/extend_neko_animations.js`.
 - `scripts/ci/validate_character.gd` checks GLTFDocument parsing, mesh geometry, UV/skin resource, skeleton, all eight unique clips, and player-scene use of the generated model and hand socket.
+- If `models/neko_nightfall_genshin_style.glb` exists, runtime and CI prefer it; otherwise both use the current `models/neko_nightfall_rigged.glb`. The Blender Actions workflow writes the candidate to this path on the runner, validates it, commits the GLB to the triggering branch using `GITHUB_TOKEN`, and uploads it as an artifact.
 
 ## Static findings
 
