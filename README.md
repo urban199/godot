@@ -1,29 +1,28 @@
 # PROJECT BLACK RAIN
 
-Prototipe survival horror first-person 3D untuk Godot 4.5.1, memakai renderer Compatibility agar sesuai sasaran desktop, web, dan Android.
+PROJECT BLACK RAIN adalah survival horror orang pertama. Versi Web memakai Three.js dan sebuah level 3D yang ditata secara eksplisit; versi native Windows dan Android tetap memakai prototipe Godot 4.5.1.
 
 ## Menjalankan
 
-1. Buka folder proyek ini di Godot 4.5.1.
-2. Tekan **Run Project**.
-3. Pilih **New Game** di menu.
+**Web:** sajikan isi folder `web/` melalui static web server lalu buka `index.html`. Three.js dimuat dari jsDelivr, jadi koneksi internet diperlukan.
+
+**Windows/Android:** buka folder proyek ini di Godot 4.5.1, tekan **Run Project**, lalu pilih **New Game**.
 
 Kontrol desktop: WASD, Shift untuk lari, Ctrl untuk jongkok, mouse untuk melihat, F untuk senter, E untuk interaksi/keluar dari tempat persembunyian, I untuk inventaris, M untuk peta, dan Esc untuk jeda.
 
 Kontrol layar sentuh dibuat saat game berjalan pada Android: joystick gerak virtual, lari, jongkok, interaksi, dan senter. Geser layar untuk melihat.
 
-## Alur prototipe
+## Alur permainan Web
 
-Ambil kartu akses di area masuk, buka pintu layanan, cari terminal dan catatan penelitian, aktifkan generator di ruang servis, lalu buka pintu keluar. Monster berpatroli, mendengar suara langkah/lari, menyelidiki, mengejar, menyerang, dan mencari kembali setelah kehilangan jejak.
+Level Three.js mencakup jalan hutan, checkpoint masuk, administrasi, koridor, ruang generator, laboratorium, antechamber, dan pintu servis keluar. Ambil kartu akses, periksa terminal dan catatan, pulihkan daya, lalu capai pintu keluar. Stalker berpatroli, menyelidiki suara gerak, mengejar, menyerang, dan mencari posisi terakhir pemain. Senter, baterai, medkit, tempat bersembunyi, hujan, kilat, menu pengaturan, kontrol sentuh, dan save browser tersedia.
 
-Progres disimpan pada checkpoint yang dapat digunakan kembali dan saat perubahan objektif penting ke `user://game_state.json`. Pengaturan kontrol, audio, grafis, dan hujan disimpan terpisah ke `user://player_settings.json`.
+Progress Web disimpan ke browser `localStorage` pada checkpoint dan perubahan penting. Pengaturan grafis, hujan, sensitivitas, dan volume juga disimpan di browser.
 
-Status implementasi dan pekerjaan tersisa tercatat di [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+Kontrol Web: WASD, mouse, Shift, Ctrl, F, E, I, M, Esc. Pada layar sentuh gunakan joystick, area lihat, dan tombol aksi.
 
 ## Ekspor
 
-Preset Web, Windows Desktop, dan Android APK tersedia di `export_presets.cfg`. Runner CI menyiapkan Godot, Android SDK, dan JDK secara terpisah. APK otomatis mengikuti preset unsigned; signing perlu dikonfigurasi sebelum distribusi rilis.
+Preset Windows Desktop dan Android APK tersedia di `export_presets.cfg`. Runner CI menyiapkan Godot, Android SDK, dan JDK secara terpisah. APK otomatis mengikuti preset unsigned; signing perlu dikonfigurasi sebelum distribusi rilis.
 
-Workflow `.github/workflows/export.yml` otomatis membangun Web, Windows, dan Android setiap ada push. Hasil ekspor diunggah sebagai artifact pada workflow run di tab **Actions**. Workflow juga dapat dijalankan manual dari tab Actions.
+Workflow `.github/workflows/export.yml` menyiapkan situs Three.js dan menerbitkannya ke GitHub Pages otomatis saat ada push ke branch default. Windows serta Android diekspor paralel dan tersedia sebagai artifact di tab **Actions**. Untuk publikasi pertama, aktifkan **Settings → Pages → Source: GitHub Actions** pada repository.
 
-Setiap workflow run mengunggah isi `build/` sebagai artifact yang dapat diunduh dari tab **Actions**.

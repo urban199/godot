@@ -2,11 +2,11 @@
 
 Rencana ini mencatat pekerjaan kode yang sudah disiapkan dalam proyek. Permintaan kerja membatasi verifikasi pada pemeriksaan statis dan mengecualikan build serta push.
 
-## 1. Fondasi proyek — kode selesai
+## 1. Fondasi dan lingkungan — prototipe selesai
 
-- Proyek Godot 4.5, renderer Compatibility, scene utama, input desktop, dan konfigurasi ekspor Web, Windows, serta Android.
-- Lingkungan 3D prosedural berisi hutan, area masuk, administrasi, koridor, ruang servis, laboratorium, hujan, kabut, kilat, material, dan properti.
-- Batang dan kanopi pohon memakai `MultiMesh`; collider tetap tersedia per pohon.
+- Versi Web Three.js memakai `web/index.html`, `web/game.js`, dan `web/style.css`; level memiliki transform ruang, pintu, properti, lampu, dan 24 pohon yang ditentukan eksplisit di kode.
+- Web merender geometri 3D dengan perspektif first-person, material, fog, pencahayaan, bayangan, senter, hujan, dan kilat. Tidak ada penempatan objek atau loot acak ketika permainan berjalan.
+- Versi native Windows/Android tetap proyek Godot 4.5.1 yang memakai `scripts/world/world_builder.gd`.
 
 ## 2. Gerak dan interaksi — kode selesai
 
@@ -28,24 +28,24 @@ Rencana ini mencatat pekerjaan kode yang sudah disiapkan dalam proyek. Permintaa
 - Checkpoint yang dapat digunakan kembali di ruang servis dan laboratorium; tombol coba lagi memuat penyimpanan terbaru.
 - Pengaturan sensitivitas, audio, kualitas grafis, intensitas efek, jarak pandang, dan kepadatan hujan.
 
-## 5. Audio dan presentasi — kode selesai pada tingkat prototipe
+## 5. Audio dan presentasi — kode prototipe
 
-- Hujan, langkah, guntur, dan stinger ancaman dibangkitkan dari kode; lampu ruang dan efek cuaca dibuat saat runtime.
-- Geometri, material, dan properti masih berupa aset prosedural/blockout. Audio rekaman, model, tekstur, decal, animasi produksi, serta set modular final belum diimpor.
+- Web memakai ambience audio sintetis melalui Web Audio dan efek guntur; tidak memakai rekaman eksternal.
+- Geometri dibuat dari mesh Three.js tanpa model, tekstur, decal, atau animasi karakter produksi. Tampilan adalah level blockout 3D yang ditata eksplisit, belum aset semi-realistis final.
 
-## 6. Ekspor — konfigurasi kode selesai
+## 6. Ekspor — konfigurasi disiapkan
 
-- Preset Web, Windows, dan Android tersedia. Workflow CI membangun ketiga target otomatis saat push dan mengunggah hasilnya sebagai artifact; pemicu manual juga tersedia.
-- Perubahan workflow dibuat, tetapi build tetap belum dijalankan dalam sesi ini.
+- Workflow CI mengemas folder Three.js `web/` sebagai situs statis, mengekspor Windows dan Android dari Godot, lalu mengunggah artifact saat push atau pemicu manual.
+- Workflow menerbitkan artifact Web ke GitHub Pages dari branch default; repository perlu memilih GitHub Actions sebagai Pages source.
+- Tidak menjalankan build, ekspor, atau workflow.
 
 ## Pekerjaan yang tersisa di luar perubahan kode ini
 
-1. Impor atau ganti aset prosedural dengan model, tekstur, decal, animasi, dan audio final.
-2. Push perubahan agar GitHub Actions menjalankan impor/validasi engine dan build ekspor otomatis.
-3. Uji kontrol, renderer, penyimpanan browser, performa, dan perangkat desktop/Android secara langsung; atur signing Android jika merilis APK.
-4. Signing Android rilis dan distribusi APK dilakukan setelah kunci rilis dikonfigurasi.
+1. Impor model, tekstur, decal, animasi, dan audio final untuk mengganti geometri placeholder.
+2. Uji pengalaman browser dan kompatibilitas touch pada desktop/mobile setelah artifact di-host.
+3. Samakan kelengkapan gameplay antara Web Three.js dengan build native Godot jika keduanya menjadi target rilis.
+4. Signing Android rilis dan distribusi APK perlu kunci rilis yang dikonfigurasi.
 
 ## Pemeriksaan dalam sesi ini
 
-- Pemeriksaan statis referensi `res://`, deklarasi input, autoload, serta konfigurasi workflow dan preset.
-- Tidak menjalankan engine, build, ekspor, workflow CI, atau pengujian runtime.
+- Verifikasi hanya statis; engine, build, ekspor, workflow CI, dan permainan tidak dijalankan.

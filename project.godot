@@ -41,3 +41,4 @@ inventory={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":73)]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.015, 0.022, 0.028, 1)
+textures/vram_compression/import_etc2_astc=true
