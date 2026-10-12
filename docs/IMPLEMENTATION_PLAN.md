@@ -35,15 +35,15 @@ Rencana ini mencatat pekerjaan kode yang sudah disiapkan dalam proyek. Permintaa
 
 ## 6. Ekspor — konfigurasi kode selesai
 
-- Preset Web, Windows, dan Android tersedia. Workflow CI ekspor hanya manual dan bukan bagian yang dijalankan untuk tugas ini.
-- Tidak ada artefak build yang dihasilkan.
+- Preset Web, Windows, dan Android tersedia. Workflow CI membangun ketiga target otomatis saat push dan mengunggah hasilnya sebagai artifact; pemicu manual juga tersedia.
+- Perubahan workflow dibuat, tetapi build tetap belum dijalankan dalam sesi ini.
 
 ## Pekerjaan yang tersisa di luar perubahan kode ini
 
 1. Impor atau ganti aset prosedural dengan model, tekstur, decal, animasi, dan audio final.
-2. Jalankan impor/validasi engine dan build ekspor pada mesin dengan Godot serta export templates yang sesuai.
+2. Push perubahan agar GitHub Actions menjalankan impor/validasi engine dan build ekspor otomatis.
 3. Uji kontrol, renderer, penyimpanan browser, performa, dan perangkat desktop/Android secara langsung; atur signing Android jika merilis APK.
-4. Push repository dilakukan oleh pemilik proyek.
+4. Signing Android rilis dan distribusi APK dilakukan setelah kunci rilis dikonfigurasi.
 
 ## Pemeriksaan dalam sesi ini
 

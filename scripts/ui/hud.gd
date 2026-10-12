@@ -309,8 +309,9 @@ func _add_touch_controls() -> void:
 	}
 	for text in actions:
 		var config: Array = actions[text]
-		var base := Vector2(0, get_viewport().get_visible_rect().size.y) if config[2] == "left" else get_viewport().get_visible_rect().size
-		var center := base + config[1]
+		var base: Vector2 = Vector2(0, get_viewport().get_visible_rect().size.y) if config[2] == "left" else get_viewport().get_visible_rect().size
+		var button_offset: Vector2 = config[1]
+		var center: Vector2 = base + button_offset
 		var background := Panel.new()
 		background.position = center - Vector2(32, 32)
 		background.size = Vector2(64, 64)

@@ -22,8 +22,8 @@ Status implementasi dan pekerjaan tersisa tercatat di [docs/IMPLEMENTATION_PLAN.
 
 ## Ekspor
 
-Preset Web, Windows Desktop, dan Android APK tersedia di `export_presets.cfg`. Ekspor Android memerlukan export templates Godot, Android SDK, JDK, dan pengaturan signing untuk rilis.
+Preset Web, Windows Desktop, dan Android APK tersedia di `export_presets.cfg`. Runner CI menyiapkan Godot, Android SDK, dan JDK secara terpisah. APK otomatis mengikuti preset unsigned; signing perlu dikonfigurasi sebelum distribusi rilis.
 
-Workflow `.github/workflows/export.yml` hanya berjalan lewat **Actions → Validate and export → Run workflow**. Workflow tidak berjalan otomatis ketika commit atau push. Web dan Windows dapat dipilih; Android tetap diekspor dari mesin yang sudah dikonfigurasi dengan Android SDK.
+Workflow `.github/workflows/export.yml` otomatis membangun Web, Windows, dan Android setiap ada push. Hasil ekspor diunggah sebagai artifact pada workflow run di tab **Actions**. Workflow juga dapat dijalankan manual dari tab Actions.
 
-Folder `build/` hanya menjadi lokasi keluaran ekspor dan tidak berisi build yang dibuat dalam perubahan ini.
+Setiap workflow run mengunggah isi `build/` sebagai artifact yang dapat diunduh dari tab **Actions**.

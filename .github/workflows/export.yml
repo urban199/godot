@@ -1,24 +1,42 @@
-name: Validate and export
+name: Build all platforms
 
 on:
+  push:
   workflow_dispatch:
-    inputs:
-      target:
-        description: Export preset
-        required: true
-        type: choice
-        options:
-          - Web
-          - Windows Desktop
 
 permissions:
   contents: read
 
 jobs:
-  export:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+
+      - name: Install Android export packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/.android/sdk}}"
+          sdkmanager --sdk_root="$SDK_ROOT" --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "cmdline-tools;latest" \
+            "cmake;3.10.2.4988404" \
+            "ndk;28.1.13356709"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
 
       - name: Set up Godot 4.5.1 and export templates
         shell: bash
@@ -40,23 +58,18 @@ jobs:
       - name: Import and validate project scripts
         run: Godot_v4.5.1-stable_linux.x86_64 --headless --editor --path . --quit
 
-      - name: Export selected target
-        env:
-          EXPORT_TARGET: ${{ inputs.target }}
+      - name: Export Web, Windows, and Android
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$EXPORT_TARGET" == "Web" ]]; then
-            mkdir -p build/web
-            Godot_v4.5.1-stable_linux.x86_64 --headless --path . --export-release "Web" build/web/index.html
-          else
-            mkdir -p build/windows
-            Godot_v4.5.1-stable_linux.x86_64 --headless --path . --export-release "Windows Desktop" build/windows/PROJECT_BLACK_RAIN.exe
-          fi
+          mkdir -p build/web build/windows build/android
+          Godot_v4.5.1-stable_linux.x86_64 --headless --path . --export-release "Web" build/web/index.html
+          Godot_v4.5.1-stable_linux.x86_64 --headless --path . --export-release "Windows Desktop" build/windows/PROJECT_BLACK_RAIN.exe
+          Godot_v4.5.1-stable_linux.x86_64 --headless --path . --export-release "Android APK" build/android/PROJECT_BLACK_RAIN.apk
 
-      - name: Upload exported project
-        uses: actions/upload-artifact@v4
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v7
         with:
-          name: black-rain-${{ inputs.target }}
+          name: black-rain-${{ github.sha }}
           path: build/
           if-no-files-found: error

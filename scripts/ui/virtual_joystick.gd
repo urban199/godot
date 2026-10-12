@@ -42,8 +42,8 @@ func _apply_action(action: String, strength: float) -> void:
 		Input.action_release(action)
 
 func _draw() -> void:
-	var center := size * 0.5
-	var radius := minf(size.x, size.y) * 0.42
+	var center: Vector2 = size * 0.5
+	var radius: float = minf(size.x, size.y) * 0.42
 	draw_circle(center, radius, Color(0.025, 0.045, 0.052, 0.76))
 	draw_arc(center, radius, 0.0, TAU, 48, Color(0.55, 0.65, 0.65, 0.8), 2.0)
 	draw_circle(center + _stick_vector * radius, radius * 0.34, Color(0.34, 0.45, 0.46, 0.88))
