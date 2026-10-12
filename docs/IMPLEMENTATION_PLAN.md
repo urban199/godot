@@ -4,14 +4,14 @@ Rencana ini mencatat pekerjaan kode yang sudah disiapkan dalam proyek. Permintaa
 
 ## 1. Fondasi dan lingkungan — prototipe selesai
 
-- Versi Web Three.js memakai `web/index.html`, `web/game.js`, dan `web/style.css`; level memiliki transform ruang, pintu, properti, lampu, dan 24 pohon yang ditentukan eksplisit di kode.
-- Web merender geometri 3D dengan perspektif first-person, material, fog, pencahayaan, bayangan, senter, hujan, dan kilat. Tidak ada penempatan objek atau loot acak ketika permainan berjalan.
+- Versi Web Three.js memakai `web/index.html`, `web/game.js`, dan `web/style.css`; distrik kota mempunyai 36 bangunan bernama, persimpangan, kendaraan, lampu jalan, landmark, serta jalan ke hutan dan fasilitas.
+- Posisi kota ditulis eksplisit. Web merender geometri 3D first-person, fasad dan jendela, material, fog, pencahayaan, senter, hujan, dan kilat. Tidak ada tata letak kota acak saat permainan berjalan.
 - Versi native Windows/Android tetap proyek Godot 4.5.1 yang memakai `scripts/world/world_builder.gd`.
 
 ## 2. Gerak dan interaksi — kode selesai
 
 - Kontrol sudut pandang pertama, berjalan, berlari, jongkok dengan pemeriksaan ruang kepala, senter dan baterai.
-- Raycast interaksi kontekstual, input keyboard/mouse, joystick gerak dan kontrol aksi sentuh, serta sensitivitas tersimpan.
+- Raycast interaksi kontekstual, keyboard/mouse, joystick gerak, swipe horizontal untuk melihat, serta tombol sentuh. Saat permainan dimulai, browser diminta masuk fullscreen dan landscape jika mendukung.
 - Tempat bersembunyi yang mematikan gerak, senter, deteksi, serta serangan sampai pemain keluar dengan tombol interaksi.
 
 ## 3. Skenario dan AI — kode selesai

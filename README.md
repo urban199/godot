@@ -14,11 +14,11 @@ Kontrol layar sentuh dibuat saat game berjalan pada Android: joystick gerak virt
 
 ## Alur permainan Web
 
-Level Three.js mencakup jalan hutan, checkpoint masuk, administrasi, koridor, ruang generator, laboratorium, antechamber, dan pintu servis keluar. Ambil kartu akses, periksa terminal dan catatan, pulihkan daya, lalu capai pintu keluar. Stalker berpatroli, menyelidiki suara gerak, mengejar, menyerang, dan mencari posisi terakhir pemain. Senter, baterai, medkit, tempat bersembunyi, hujan, kilat, menu pengaturan, kontrol sentuh, dan save browser tersedia.
+Level Three.js mencakup distrik kota dengan 36 bangunan bernama, jalan ber-grid, landmark, lampu jalan, dan kendaraan, lalu jalan hutan dan fasilitas penelitian. Posisi blok dan landmark ditetapkan di kode. Ikuti sinyal ke fasilitas, ambil kartu akses, periksa terminal dan catatan, pulihkan daya, lalu capai pintu servis keluar. Stalker berpatroli, menyelidiki suara gerak, mengejar, menyerang, dan mencari posisi terakhir pemain. Senter, baterai, medkit, tempat bersembunyi, hujan, kilat, menu pengaturan, kontrol sentuh, dan save browser tersedia.
 
 Progress Web disimpan ke browser `localStorage` pada checkpoint dan perubahan penting. Pengaturan grafis, hujan, sensitivitas, dan volume juga disimpan di browser.
 
-Kontrol Web: WASD, mouse, Shift, Ctrl, F, E, I, M, Esc. Pada layar sentuh gunakan joystick, area lihat, dan tombol aksi.
+Kontrol Web: WASD, mouse, Shift, Ctrl, F, E, I, M, Esc. Pada layar sentuh gunakan joystick kiri, swipe kanan/kiri untuk memutar kamera, dan tombol aksi. Game meminta fullscreen dan landscape saat dimulai jika browser mendukungnya; layar portrait menampilkan petunjuk untuk memutar perangkat.
 
 ## Ekspor
 

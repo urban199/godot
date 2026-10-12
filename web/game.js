@@ -42,6 +42,59 @@ mats.red = mat('red', 0x8f302a, 0.52, 0.15, { emissive: 0x260704 });
 mats.screen = mat('screen', 0x4a9a91, 0.35, 0.05, { emissive: 0x123e38, emissiveIntensity: 1.1 });
 mats.creature = mat('creature', 0x100f13, 0.72, 0.08);
 mats.eye = mat('eye', 0xe4372e, 0.28, 0.1, { emissive: 0x8f0805, emissiveIntensity: 1.5 });
+mats.asphalt = mat('asphalt', 0x20272a, 0.95, 0.04);
+mats.sidewalk = mat('sidewalk', 0x555957, 0.92);
+mats.brick = mat('brick', 0x494342, 0.93);
+mats.plaster = mat('plaster', 0x666863, 0.91);
+mats.sandstone = mat('sandstone', 0x686457, 0.88);
+mats.cityGlass = mat('cityGlass', 0x243b42, 0.3, 0.18, { emissive: 0x101c20, emissiveIntensity: 0.45 });
+mats.litWindow = mat('litWindow', 0xc28b4b, 0.38, 0, { emissive: 0x6d3c17, emissiveIntensity: 0.55 });
+mats.whitePaint = mat('whitePaint', 0xa7a696, 0.7);
+mats.tire = mat('tire', 0x101314, 0.91);
+mats.wood = mat('wood', 0x46382c, 0.82);
+mats.tile = mat('tile', 0x3d4644, 0.7);
+mats.fabric = mat('fabric', 0x373b39, 0.97);
+mats.paper = mat('paper', 0xb5aa8f, 0.93);
+
+function addSurfaceTexture(material, seed, pattern = 'grain') {
+  const size = 256;
+  const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  const image = context.createImageData(size, size);
+  let state = seed >>> 0;
+  const noise = () => { state = (state * 1664525 + 1013904223) >>> 0; return state / 0x100000000; };
+  for (let py = 0; py < size; py++) for (let px = 0; px < size; px++) {
+    const seam = pattern === 'brick' && (py % 32 < 3 || ((Math.floor(py / 32) % 2 === 0 ? px : px + 32) % 64 < 3));
+    const grain = (noise() - 0.5) * (pattern === 'metal' ? 22 : 38);
+    const wetStain = Math.sin(px * 0.039 + Math.cos(py * 0.052)) * 4 + Math.sin(py * 0.11) * 2;
+    const value = Math.max(0, Math.min(255, (seam ? 58 : 128) + grain + wetStain));
+    const i = (py * size + px) * 4;
+    image.data[i] = value; image.data[i + 1] = value; image.data[i + 2] = value; image.data[i + 3] = 255;
+  }
+  context.putImageData(image, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(pattern === 'brick' ? 3 : 4, pattern === 'wood' ? 2 : 3);
+  texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const bump = new THREE.CanvasTexture(canvas);
+  bump.wrapS = bump.wrapT = THREE.RepeatWrapping; bump.repeat.copy(texture.repeat);
+  bump.anisotropy = texture.anisotropy;
+  material.map = texture; material.bumpMap = bump; material.bumpScale = pattern === 'metal' ? 0.025 : 0.065; material.needsUpdate = true;
+}
+addSurfaceTexture(mats.concrete, 1441);
+addSurfaceTexture(mats.concreteDark, 2017);
+addSurfaceTexture(mats.floor, 701, 'tile');
+addSurfaceTexture(mats.mud, 882, 'grain');
+addSurfaceTexture(mats.rust, 991, 'metal');
+addSurfaceTexture(mats.metal, 613, 'metal');
+addSurfaceTexture(mats.asphalt, 3251);
+addSurfaceTexture(mats.sidewalk, 842, 'tile');
+addSurfaceTexture(mats.brick, 551, 'brick');
+addSurfaceTexture(mats.plaster, 2281);
+addSurfaceTexture(mats.sandstone, 673, 'grain');
+addSurfaceTexture(mats.wood, 884, 'wood');
+addSurfaceTexture(mats.tile, 183, 'tile');
+addSurfaceTexture(mats.fabric, 352, 'grain');
 
 const hemi = new THREE.HemisphereLight(0x8b9a9c, 0x101614, 0.54);
 scene.add(hemi);
@@ -153,6 +206,304 @@ box('Gate concrete right', 5.4, 1.8, -7, 0.7, 3.6, 1.1, mats.concreteDark);
 box('Gate beam', 0, 3.38, -7, 11.4, 0.56, 1.2, mats.metal);
 sign('NORTH CASCADE  /  RESEARCH FACILITY', 0, 3.35, -7.63);
 for (const x of [-4.5, 4.5]) for (const z of [-4, -8.8]) cylinder('Gate bollard', x, 0.62, z, 0.12, 0.16, 1.25, mats.rust, 8);
+
+// North Cascade city district. Every block and landmark below has an authored,
+// fixed location; repeated façade parts use the same hand-set module spacing.
+box('City ground', 0, -0.38, 108, 174, 0.48, 164, mats.mud, { solid: false });
+box('North Cascade main avenue', 0, -0.08, 108, 14, 0.12, 158, mats.asphalt, { solid: false });
+for (const x of [-9.5, 9.5]) box('Main avenue sidewalk', x, 0.0, 108, 4.8, 0.16, 158, mats.sidewalk, { solid: false });
+for (const x of [-7.15, 7.15]) box('Avenue curb', x, 0.07, 108, 0.22, 0.24, 158, mats.dirtyWhite, { solid: false });
+for (const z of [55, 81, 107, 133, 159, 185]) {
+  box('Cross street', 0, -0.075, z, 164, 0.13, 9.2, mats.asphalt, { solid: false });
+  for (const x of [-7.6, -6.35, 6.35, 7.6]) box('Intersection crosswalk stripe', x, 0.005, z, 0.48, 0.018, 3.8, mats.whitePaint, { solid: false });
+  for (let lane = -72; lane <= 72; lane += 12) {
+    if (Math.abs(lane) > 11) box('Cross street lane dash', lane, 0.006, z, 4.3, 0.018, 0.12, mats.whitePaint, { solid: false });
+  }
+}
+for (const x of [-78, 78]) box('Outer avenue sidewalk', x, 0, 108, 4, 0.16, 158, mats.sidewalk, { solid: false });
+for (let z = 34; z <= 178; z += 12) {
+  for (const x of [-11, 11]) {
+    cylinder('Streetlight pole', x, 3.0, z, 0.075, 0.11, 6, mats.metal, 8);
+    const arm = cylinder('Streetlight arm', x + Math.sign(x) * 0.8, 5.85, z, 0.045, 0.055, 1.7, mats.metal, 7);
+    arm.rotation.z = Math.sign(x) * Math.PI / 2;
+    box('Streetlight hood', x + Math.sign(x) * 1.55, 5.58, z, 0.7, 0.12, 0.42, mats.metal, { solid: false });
+    box('Streetlight lens', x + Math.sign(x) * 1.55, 5.5, z, 0.48, 0.035, 0.29, mats.litWindow, { solid: false });
+    const light = addLight('Sodium avenue lamp', 0xd3a16a, 0.72, 13, x + Math.sign(x) * 1.55, 5.25, z);
+    light.userData.baseIntensity = 0.72;
+  }
+}
+function addInstancedBoxes(name, size, material, positions) {
+  if (positions.length === 0) return;
+  const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(...size), material, positions.length);
+  mesh.name = name; mesh.castShadow = false; mesh.receiveShadow = false;
+  const dummy = new THREE.Object3D();
+  positions.forEach((position, index) => { dummy.position.set(...position); dummy.updateMatrix(); mesh.setMatrixAt(index, dummy.matrix); });
+  mesh.instanceMatrix.needsUpdate = true; scene.add(mesh);
+}
+function furnishCityInterior(building, towardRoad) {
+  const { name, x, z, width, depth } = building;
+  const inward = -towardRoad;
+  const floorMat = /hospital|medical|pharmacy|school|market|grocery|laundromat/i.test(name) ? mats.tile : mats.wood;
+  box(`${name} interior floor`, x, 0.035, z, width - 0.7, 0.1, depth - 0.7, floorMat, { solid: false });
+  box(`${name} entry mat`, x + inward * (width * 0.29), 0.095, z + depth * 0.28, 1.25, 0.035, 1.8, mats.fabric, { solid: false });
+  const lampX = x + inward * (width * 0.12);
+  box(`${name} ceiling light fixture`, lampX, 3.05, z, 1.25, 0.09, 2.2, mats.metal, { solid: false });
+  const interiorLight = addLight(`${name} interior light`, 0xe6bd83, 0.58, Math.max(width, depth) * 0.95, lampX, 2.76, z);
+  interiorLight.userData.baseIntensity = 0.58;
+
+  const at = (localX, localZ) => [x + inward * localX, z + localZ];
+  const table = (label, localX, localZ, w = 2.1, d = 1.15) => {
+    const [tx, tz] = at(localX, localZ);
+    box(`${name} ${label} tabletop`, tx, 0.88, tz, w, 0.15, d, mats.wood);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(`${name} ${label} leg`, tx + sx * (w / 2 - 0.12), 0.43, tz + sz * (d / 2 - 0.12), 0.12, 0.78, 0.12, mats.metal);
+  };
+  const shelf = (label, localX, localZ, w = 2.7, levels = 3) => {
+    const [sx, sz] = at(localX, localZ);
+    box(`${name} ${label} frame`, sx, 1.25, sz, w, 2.5, 0.42, mats.metal);
+    for (let level = 0; level < levels; level++) {
+      const y = 0.42 + level * (1.72 / Math.max(1, levels - 1));
+      box(`${name} ${label} shelf ${level + 1}`, sx, y, sz - 0.12, w + 0.12, 0.08, 0.64, mats.wood, { solid: false });
+      for (let item = 0; item < Math.max(2, Math.floor(w / 0.52)); item++) {
+        const itemX = sx - w * 0.39 + item * (w * 0.78 / Math.max(1, Math.floor(w / 0.52) - 1));
+        const height = 0.2 + ((item + level * 2) % 4) * 0.075;
+        box(`${name} ${label} stock ${level + 1}-${item + 1}`, itemX, y + 0.04 + height / 2, sz - 0.19, 0.22, height, 0.3, [mats.dirtyWhite, mats.red, mats.paper, mats.rust][(item + level) % 4], { solid: false });
+      }
+    }
+  };
+  const counter = (label, localX, localZ, w = 3.4) => {
+    const [cx, cz] = at(localX, localZ);
+    box(`${name} ${label} counter base`, cx, 0.56, cz, w, 1.05, 0.9, mats.wood);
+    box(`${name} ${label} counter top`, cx, 1.12, cz, w + 0.16, 0.12, 1.02, mats.metal);
+    box(`${name} ${label} register`, cx + w * 0.27, 1.34, cz - 0.12, 0.48, 0.34, 0.34, mats.concreteDark);
+    box(`${name} ${label} register display`, cx + w * 0.27, 1.53, cz - 0.3, 0.34, 0.1, 0.025, mats.screen, { solid: false });
+  };
+  const chair = (label, localX, localZ) => {
+    const [cx, cz] = at(localX, localZ);
+    box(`${name} ${label} seat`, cx, 0.52, cz, 0.55, 0.12, 0.55, mats.fabric);
+    box(`${name} ${label} back`, cx, 0.87, cz + 0.23, 0.55, 0.66, 0.1, mats.fabric);
+    for (const dx of [-0.2, 0.2]) for (const dz of [-0.2, 0.2]) box(`${name} ${label} leg`, cx + dx, 0.25, cz + dz, 0.07, 0.48, 0.07, mats.metal);
+  };
+
+  if (/diner|cafe|tavern/i.test(name)) {
+    counter('service', width * 0.27, -depth * 0.1, width * 0.4);
+    for (const [lx, lz] of [[-width * 0.22, -depth * 0.25], [-width * 0.22, depth * 0.05], [-width * 0.22, depth * 0.32]]) { table('booth table', lx, lz, 1.55, 1.0); chair('booth chair', lx + 0.5, lz + 0.68); }
+    shelf('back-bar bottles', width * 0.27, -depth * 0.34, width * 0.34, 2);
+  } else if (/market|grocery|pharmacy|hardware|books|stationer|pawn|laundromat/i.test(name)) {
+    counter('checkout', width * 0.28, -depth * 0.25, width * 0.34);
+    shelf('stock aisle A', -width * 0.22, -depth * 0.2, width * 0.4, 4);
+    shelf('stock aisle B', -width * 0.22, depth * 0.19, width * 0.4, 4);
+    if (/laundromat/i.test(name)) for (const [lx, lz] of [[-width * 0.25, -depth * 0.3], [-width * 0.25, -depth * 0.04], [-width * 0.25, depth * 0.22]]) {
+      const [mx, mz] = at(lx, lz);
+      box(`${name} washer body`, mx, 0.76, mz, 1.1, 1.45, 0.9, mats.dirtyWhite);
+      cylinder(`${name} washer drum`, mx + towardRoad * 0.56, 0.77, mz, 0.35, 0.35, 0.1, mats.metal, 16);
+      cylinder(`${name} washer glass`, mx + towardRoad * 0.62, 0.77, mz, 0.24, 0.24, 0.035, mats.glass, 16);
+    }
+  } else if (/hospital|medical/i.test(name)) {
+    for (const [lx, lz] of [[-width * 0.24, -depth * 0.24], [-width * 0.24, depth * 0.22]]) {
+      const [bx, bz] = at(lx, lz);
+      box(`${name} examination bed`, bx, 0.62, bz, 1.1, 0.25, 2.4, mats.dirtyWhite);
+      box(`${name} pillow`, bx, 0.8, bz + 0.78, 0.82, 0.18, 0.48, mats.paper, { solid: false });
+      box(`${name} bed frame`, bx, 0.32, bz, 0.09, 0.55, 2.25, mats.metal);
+      box(`${name} monitor`, bx + inward * 1.2, 1.52, bz - 0.72, 0.62, 0.9, 0.12, mats.concreteDark);
+      box(`${name} monitor display`, bx + inward * 1.2, 1.55, bz - 0.65, 0.5, 0.62, 0.03, mats.screen, { solid: false });
+    }
+    counter('nurses station', width * 0.27, 0, width * 0.3);
+  } else if (/hotel|motel|apartments/i.test(name)) {
+    for (const [lx, lz] of [[-width * 0.22, -depth * 0.22], [-width * 0.22, depth * 0.24]]) {
+      const [bx, bz] = at(lx, lz);
+      box(`${name} bed frame`, bx, 0.38, bz, 2.2, 0.5, 3.2, mats.wood);
+      box(`${name} mattress`, bx, 0.69, bz, 2.12, 0.22, 3.08, mats.fabric, { solid: false });
+      box(`${name} pillow`, bx, 0.84, bz + 1.02, 1.0, 0.18, 0.62, mats.paper, { solid: false });
+      box(`${name} nightstand`, bx + towardRoad * 1.5, 0.57, bz + 0.75, 0.78, 1.08, 0.72, mats.wood);
+    }
+    counter('reception', width * 0.27, -depth * 0.22, width * 0.32);
+  } else if (/cinema/i.test(name)) {
+    counter('ticket booth', width * 0.28, -depth * 0.26, width * 0.3);
+    for (let row = 0; row < 3; row++) for (let seat = 0; seat < 4; seat++) {
+      const [sx, sz] = at(-width * 0.22 + row * 1.45, -depth * 0.12 + seat * 1.2);
+      box(`${name} cinema seat cushion`, sx, 0.58, sz, 0.88, 0.28, 0.92, mats.red);
+      box(`${name} cinema seat back`, sx, 1.04, sz + 0.34, 0.88, 0.85, 0.18, mats.red);
+    }
+    box(`${name} projection screen`, x + inward * (width * 0.42), 1.9, z, 0.12, 2.6, depth * 0.65, mats.dirtyWhite, { solid: false });
+  } else if (/school|library|records|municipal|hall|police|office|exchange|water department|fire station|chapel/i.test(name)) {
+    for (const [lx, lz] of [[-width * 0.22, -depth * 0.23], [-width * 0.22, depth * 0.2]]) { table('work table', lx, lz, 2.4, 1.25); chair('work chair', lx + 0.85, lz + 0.9); }
+    shelf(/library|records/i.test(name) ? 'archive books' : 'files', width * 0.27, -depth * 0.2, width * 0.28, 4);
+    counter('front desk', width * 0.28, depth * 0.28, width * 0.32);
+  } else {
+    table('workbench', -width * 0.2, -depth * 0.17, 2.8, 1.2);
+    counter('service counter', width * 0.26, -depth * 0.16, width * 0.32);
+    shelf('equipment rack', -width * 0.2, depth * 0.22, width * 0.34, 3);
+  }
+  if (building.damaged) {
+    const [dx, dz] = at(-width * 0.12, depth * 0.36);
+    box(`${name} interior debris`, dx, 0.22, dz, 1.5, 0.44, 1.1, mats.rust, { solid: false });
+    for (let shard = 0; shard < 4; shard++) box(`${name} broken plaster fragment ${shard + 1}`, dx - 0.7 + shard * 0.42, 0.05 + shard * 0.012, dz + 0.72, 0.3, 0.09, 0.22, mats.dirtyWhite, { solid: false });
+  }
+}
+function cityBuilding({ name, x, z, width, depth, height, material, floors, signText, damaged = false }) {
+  const towardRoad = x < 0 ? 1 : -1;
+  const innerRoomHeight = 3.35;
+  const wallThickness = 0.38;
+  const outerX = x + towardRoad * (width / 2 - wallThickness / 2);
+  const innerX = x - towardRoad * (width / 2 - wallThickness / 2);
+  // Upper storeys remain as a skyline shell; the street-level storey is a real,
+  // collision-bounded room with a walk-through entrance in the road-facing wall.
+  const upperHeight = Math.max(0.3, height - innerRoomHeight);
+  box(`${name} upper storey shell`, x, innerRoomHeight + upperHeight / 2, z, width, upperHeight, depth, material, { solid: false, cast: false });
+  box(`${name} interior floor slab`, x, -0.1, z, width - wallThickness, 0.2, depth - wallThickness, mats.concreteDark, { solid: false });
+  const entranceZ = z + depth * 0.28;
+  const entryWidth = Math.min(1.8, depth * 0.14);
+  const northPierLength = entranceZ - entryWidth / 2 - (z - depth / 2);
+  const southPierLength = z + depth / 2 - (entranceZ + entryWidth / 2);
+  const northGlassLength = Math.max(0.5, northPierLength - 1.3);
+  const southGlassLength = Math.max(0.5, southPierLength - 0.8);
+  for (const [part, segmentZ, segmentLength] of [
+    ['north', z - depth / 2 + northPierLength / 2, northPierLength],
+    ['south', entranceZ + entryWidth / 2 + southPierLength / 2, southPierLength],
+  ]) {
+    box(`${name} ${part} storefront sill`, outerX, 0.3, segmentZ, wallThickness, 0.6, segmentLength, material);
+    box(`${name} ${part} storefront lintel`, outerX, 2.82, segmentZ, wallThickness, 1.06, segmentLength, material);
+    for (const edge of [-1, 1]) box(`${name} ${part} storefront pier ${edge}`, outerX, 1.55, segmentZ + edge * (segmentLength / 2 - 0.12), wallThickness, 2.5, 0.24, material);
+  }
+  box(`${name} front wall lintel`, outerX, innerRoomHeight - 0.34, entranceZ, wallThickness, 0.68, entryWidth, material);
+  for (const [sideName, sideX] of [['inner', innerX], ['outer', outerX]]) {
+    box(`${name} ${sideName} wall`, sideX, innerRoomHeight / 2, z, wallThickness, innerRoomHeight, depth, material);
+  }
+  for (const sideZ of [z - depth / 2 + wallThickness / 2, z + depth / 2 - wallThickness / 2]) box(`${name} end wall`, x, innerRoomHeight / 2, sideZ, width, innerRoomHeight, wallThickness, material);
+  box(`${name} doorway threshold`, outerX - towardRoad * 0.3, 0.04, entranceZ, 0.75, 0.08, entryWidth, mats.metal, { solid: false });
+  furnishCityInterior({ name, x, z, width, depth, damaged }, towardRoad);
+  const frontX = x + towardRoad * (width / 2 + 0.035);
+  const windowColumns = Math.max(2, Math.floor(depth / 3.4));
+  const windowRows = Math.max(2, floors);
+  const darkWindows = [], litWindows = [], sills = [], dividers = [];
+  for (let row = 0; row < windowRows; row++) {
+    const y = innerRoomHeight + 1.15 + row * Math.max(0.6, (height - innerRoomHeight - 2.9) / Math.max(1, windowRows - 1));
+    for (let col = 0; col < windowColumns; col++) {
+      const zz = z - depth / 2 + 1.7 + col * ((depth - 3.4) / Math.max(1, windowColumns - 1));
+      const lit = ((row * 7 + col * 3 + Math.round(Math.abs(x) + z)) % 9) === 2;
+      (lit ? litWindows : darkWindows).push([frontX, y, zz]);
+      for (const yFrame of [y - 0.74, y + 0.74]) sills.push([frontX + towardRoad * 0.055, yFrame, zz]);
+      dividers.push([frontX + towardRoad * 0.06, y, zz]);
+    }
+  }
+  addInstancedBoxes(`${name} dark windowpanes`, [0.075, 1.35, 1.08], mats.cityGlass, darkWindows);
+  addInstancedBoxes(`${name} lit windowpanes`, [0.075, 1.35, 1.08], mats.litWindow, litWindows);
+  addInstancedBoxes(`${name} window sills`, [0.16, 0.055, 1.2], mats.metal, sills);
+  addInstancedBoxes(`${name} window dividers`, [0.15, 1.32, 0.055], mats.metal, dividers);
+  for (const side of [-1, 1]) {
+    box(`${name} facade corner pilaster ${side}`, frontX + towardRoad * 0.11, height / 2, z + side * (depth / 2 - 0.22), 0.2, height, 0.24, damaged ? mats.rust : mats.concreteDark, { solid: false });
+  }
+  for (let level = 0; level < windowRows; level++) {
+    const bandY = innerRoomHeight + 0.55 + level * Math.max(0.6, (height - innerRoomHeight - 1.1) / Math.max(1, windowRows));
+    if (bandY < height - 0.25) box(`${name} facade floor belt ${level + 1}`, frontX + towardRoad * 0.09, bandY, z, 0.14, 0.12, depth, mats.metal, { solid: false });
+    if (/hotel|apartments|tower/i.test(name) && !/water tower/i.test(name) && level > 0 && level < windowRows - 1) {
+      const balconyY = innerRoomHeight + 1.5 + level * Math.max(0.6, (height - innerRoomHeight - 3) / Math.max(1, windowRows - 1));
+      box(`${name} balcony slab ${level}`, frontX + towardRoad * 0.62, balconyY - 0.55, z, 0.72, 0.14, Math.min(3.2, depth * 0.42), mats.concreteDark, { solid: false });
+      box(`${name} balcony rail top ${level}`, frontX + towardRoad * 0.92, balconyY + 0.02, z, 0.08, 0.08, Math.min(3.2, depth * 0.42), mats.metal, { solid: false });
+      for (let rail = -1; rail <= 1; rail++) box(`${name} balcony baluster ${level}-${rail + 2}`, frontX + towardRoad * 0.92, balconyY - 0.26, z + rail * 0.82, 0.055, 0.55, 0.055, mats.metal, { solid: false });
+    }
+  }
+  // Ground-floor glass panels flank the real opening; the entrance stays clear.
+  for (const [side, glassZ, glassLength] of [
+    [-1, z - depth / 2 + northPierLength / 2, northGlassLength],
+    [1, entranceZ + entryWidth / 2 + southPierLength / 2, southGlassLength],
+  ]) {
+    const paneLength = Math.max(0.45, glassLength - 0.28);
+    const pane = box(`${name} storefront glazing ${side}`, frontX + towardRoad * 0.065, 1.52, glassZ, 0.055, 1.84, paneLength, mats.cityGlass, { solid: false, cast: false });
+    solids.push({ minX: pane.position.x - 0.055, maxX: pane.position.x + 0.055, minZ: glassZ - paneLength / 2, maxZ: glassZ + paneLength / 2, minY: 0.6, maxY: 2.45, mesh: pane });
+    box(`${name} shopfront mullion ${side}`, frontX + towardRoad * 0.11, 1.52, glassZ, 0.08, 1.92, 0.08, mats.metal, { solid: false });
+  }
+  box(`${name} awning`, frontX + towardRoad * 0.34, 2.45, z, 0.62, 0.16, depth * 0.62, damaged ? mats.rust : mats.red, { solid: false });
+  sign(signText || name.toUpperCase(), frontX + towardRoad * 0.23, Math.min(height - 0.9, 3.4), z, towardRoad > 0 ? Math.PI / 2 : -Math.PI / 2);
+  // Rooftop plant and one fixed exhaust stack give each skyline silhouette a distinct top.
+  box(`${name} rooftop plant`, x - width * 0.23, height + 0.42, z + depth * 0.22, width * 0.27, 0.82, 1.1, mats.metal, { solid: false });
+  cylinder(`${name} roof vent`, x + width * 0.27, height + 0.72, z - depth * 0.22, 0.24, 0.32, 1.4, mats.rust, 8);
+  if (damaged) {
+    box(`${name} boarded window`, frontX + towardRoad * 0.09, 1.2, z - depth * 0.32, 0.13, 0.52, 1.2, mats.bark, { solid: false });
+    box(`${name} facade damage`, frontX + towardRoad * 0.08, height * 0.58, z + depth * 0.36, 0.12, 0.08, depth * 0.21, mats.rust, { solid: false });
+  }
+}
+const cityBuildings = [
+  { name: 'Cascade Municipal Hall', x: -20, z: 42, width: 15, depth: 18, height: 17, material: mats.sandstone, floors: 5, signText: 'MUNICIPAL HALL' },
+  { name: 'Rainier Pharmacy', x: 20, z: 42, width: 13, depth: 17, height: 10, material: mats.plaster, floors: 3, signText: 'RAINIER PHARMACY', damaged: true },
+  { name: 'Cascade Hotel', x: -39, z: 42, width: 16, depth: 18, height: 29, material: mats.brick, floors: 9, signText: 'CASCADE HOTEL' },
+  { name: 'Northline Books', x: 39, z: 42, width: 14, depth: 16, height: 12, material: mats.brick, floors: 4, signText: 'NORTHLINE BOOKS' },
+  { name: 'Residential Tower West', x: -60, z: 42, width: 17, depth: 18, height: 36, material: mats.concreteDark, floors: 12, signText: 'NORTH CASCADE' },
+  { name: 'Old Cinema', x: 60, z: 42, width: 18, depth: 19, height: 14, material: mats.rust, floors: 4, signText: 'CINEMA 6', damaged: true },
+  { name: 'Corner Grocery', x: -20, z: 68, width: 14, depth: 18, height: 10, material: mats.plaster, floors: 3, signText: 'CORNER GROCERY' },
+  { name: 'Cascade Police Annex', x: 20, z: 68, width: 15, depth: 18, height: 14, material: mats.concrete, floors: 4, signText: 'POLICE ANNEX' },
+  { name: 'Riverside Apartments', x: -39, z: 68, width: 17, depth: 18, height: 25, material: mats.brick, floors: 8, signText: 'RIVERSIDE APTS', damaged: true },
+  { name: 'Cascade Credit Union', x: 39, z: 68, width: 15, depth: 17, height: 16, material: mats.sandstone, floors: 5, signText: 'CREDIT UNION' },
+  { name: 'The Lantern Diner', x: -60, z: 68, width: 17, depth: 18, height: 10, material: mats.rust, floors: 3, signText: 'THE LANTERN DINER' },
+  { name: 'Medical Offices', x: 60, z: 68, width: 16, depth: 18, height: 22, material: mats.plaster, floors: 7, signText: 'MEDICAL OFFICES' },
+  { name: 'Cascade General Hospital', x: -20, z: 94, width: 17, depth: 19, height: 26, material: mats.dirtyWhite, floors: 8, signText: 'CASCADE HOSPITAL' },
+  { name: 'Pawn and Repair', x: 20, z: 94, width: 14, depth: 17, height: 11, material: mats.brick, floors: 3, signText: 'PAWN / REPAIR', damaged: true },
+  { name: 'Marlow Apartments', x: -39, z: 94, width: 16, depth: 18, height: 20, material: mats.sandstone, floors: 6, signText: 'MARLOW HOUSE' },
+  { name: 'Municipal Records', x: 39, z: 94, width: 16, depth: 18, height: 18, material: mats.concrete, floors: 6, signText: 'CITY RECORDS' },
+  { name: 'Westbound Bus Depot', x: -60, z: 94, width: 18, depth: 19, height: 13, material: mats.concreteDark, floors: 3, signText: 'BUS DEPOT' },
+  { name: 'Stationer and Cafe', x: 60, z: 94, width: 16, depth: 17, height: 11, material: mats.rust, floors: 3, signText: 'STATIONER / CAFE' },
+  { name: 'North Cascade School', x: -20, z: 120, width: 18, depth: 20, height: 15, material: mats.brick, floors: 4, signText: 'NORTH CASCADE SCHOOL' },
+  { name: 'Telephone Exchange', x: 20, z: 120, width: 14, depth: 18, height: 19, material: mats.concreteDark, floors: 6, signText: 'TELEPHONE EXCHANGE' },
+  { name: 'Juniper Apartments', x: -39, z: 120, width: 17, depth: 19, height: 31, material: mats.plaster, floors: 10, signText: 'JUNIPER HOUSE' },
+  { name: 'North Cascade Library', x: 39, z: 120, width: 17, depth: 18, height: 20, material: mats.sandstone, floors: 6, signText: 'PUBLIC LIBRARY' },
+  { name: 'Railyard Warehouse', x: -60, z: 120, width: 19, depth: 20, height: 14, material: mats.rust, floors: 3, signText: 'RAIL YARD 04', damaged: true },
+  { name: 'Northgate Market', x: 60, z: 120, width: 18, depth: 20, height: 12, material: mats.plaster, floors: 3, signText: 'NORTHGATE MARKET' },
+  { name: 'Motel North', x: -20, z: 146, width: 15, depth: 18, height: 12, material: mats.rust, floors: 3, signText: 'MOTEL NORTH', damaged: true },
+  { name: 'Water Department', x: 20, z: 146, width: 16, depth: 18, height: 14, material: mats.concrete, floors: 4, signText: 'WATER DEPT' },
+  { name: 'St Agnes Chapel', x: -39, z: 146, width: 17, depth: 19, height: 21, material: mats.sandstone, floors: 4, signText: 'ST AGNES' },
+  { name: 'Hardware Store', x: 39, z: 146, width: 16, depth: 18, height: 11, material: mats.brick, floors: 3, signText: 'HARDWARE' },
+  { name: 'Laundromat', x: -60, z: 146, width: 17, depth: 18, height: 10, material: mats.plaster, floors: 3, signText: 'CLEAN SPIN' },
+  { name: 'Eastline Apartments', x: 60, z: 146, width: 17, depth: 18, height: 27, material: mats.concreteDark, floors: 9, signText: 'EASTLINE' },
+  { name: 'Water Tower Base', x: -20, z: 172, width: 17, depth: 18, height: 15, material: mats.concreteDark, floors: 4, signText: 'WATERWORKS' },
+  { name: 'Fire Station 2', x: 20, z: 172, width: 17, depth: 18, height: 13, material: mats.brick, floors: 3, signText: 'FIRE STATION 2' },
+  { name: 'North Ridge Tower', x: -39, z: 172, width: 18, depth: 19, height: 34, material: mats.concrete, floors: 11, signText: 'NORTH RIDGE' },
+  { name: 'Freight Terminal', x: 39, z: 172, width: 18, depth: 19, height: 16, material: mats.rust, floors: 4, signText: 'FREIGHT TERMINAL' },
+  { name: 'Cold Storage', x: -60, z: 172, width: 18, depth: 19, height: 13, material: mats.plaster, floors: 3, signText: 'COLD STORAGE' },
+  { name: 'West End Tavern', x: 60, z: 172, width: 17, depth: 18, height: 11, material: mats.brick, floors: 3, signText: 'WEST END TAVERN', damaged: true },
+];
+for (const building of cityBuildings) cityBuilding(building);
+const waterTowerLegs = [[-21.4, 172.8], [-18.6, 172.8], [-21.4, 175.2], [-18.6, 175.2]];
+for (const [x, z] of waterTowerLegs) cylinder('Water tower steel leg', x, 22.1, z, 0.18, 0.25, 14.2, mats.metal, 8);
+cylinder('Water tower tank', -20, 29.4, 174, 3.8, 3.9, 5.0, mats.rust, 18);
+const tankRoof = new THREE.Mesh(new THREE.SphereGeometry(3.78, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), mats.rust);
+tankRoof.position.set(-20, 31.9, 174); scene.add(tankRoof);
+box('Water tower lettering plate', -20, 29.5, 170.06, 2.4, 1.15, 0.08, mats.dirtyWhite, { solid: false });
+sign('NORTH CASCADE', -20, 29.6, 169.98);
+
+function addCar(name, x, z, color, rotation = 0, van = false) {
+  const root = new THREE.Group(); root.name = name; root.position.set(x, 0, z); root.rotation.y = rotation; scene.add(root);
+  const length = van ? 3.8 : 3.3, width = van ? 1.72 : 1.8, bodyY = van ? 0.76 : 0.62;
+  box(`${name} chassis`, 0, bodyY, 0, width, van ? 1.18 : 0.86, length, mat(`${name}-paint`, color, 0.58, 0.34), { solid: false, parent: root });
+  solids.push({ minX: x - width / 2, maxX: x + width / 2, minZ: z - length / 2, maxZ: z + length / 2, minY: 0, maxY: bodyY + 0.75, mesh: null });
+  box(`${name} windshield`, 0, bodyY + (van ? 0.57 : 0.55), -0.3, width * 0.82, van ? 0.62 : 0.52, length * 0.36, mats.glass, { solid: false, parent: root });
+  box(`${name} hood`, 0, bodyY + 0.36, -length * 0.32, width * 0.9, 0.16, length * 0.32, mats.metal, { solid: false, parent: root });
+  for (const side of [-1, 1]) for (const axle of [-1, 1]) {
+    const wheel = cylinder(`${name} wheel`, side * width * 0.51, 0.38, axle * length * 0.31, 0.36, 0.36, 0.22, mats.tire, 10, root);
+    wheel.rotation.z = Math.PI / 2;
+    cylinder(`${name} hub`, side * (width * 0.51 + 0.02), 0.38, axle * length * 0.31, 0.15, 0.15, 0.23, mats.metal, 8, root).rotation.z = Math.PI / 2;
+  }
+  for (const side of [-1, 1]) box(`${name} headlamp`, side * 0.58, bodyY + 0.09, -length / 2 - 0.015, 0.32, 0.17, 0.05, mats.litWindow, { solid: false, parent: root });
+  return root;
+}
+addCar('Abandoned blue sedan', -4.75, 53, 0x34474b, 0.12);
+addCar('Derelict delivery van', 4.45, 78, 0x51483d, -0.08, true);
+addCar('Flooded taxi', -4.8, 109, 0x78643d, 0.04);
+addCar('Unmarked patrol car', 4.8, 137, 0x343c40, -0.06);
+for (const [x, z] of [[-14, 46], [14, 72], [-14, 98], [14, 124], [-14, 150], [14, 176]]) {
+  box('City utility cabinet', x, 0.78, z, 0.72, 1.56, 0.68, mats.metal);
+  box('Utility hazard plate', x + (x < 0 ? 0.37 : -0.37), 0.84, z, 0.025, 0.62, 0.48, mats.red, { solid: false });
+}
+for (const [x, z, label] of [[-11.5, 55, 'NORTH CASCADE'], [11.5, 107, 'HOSPITAL / DOWNTOWN'], [-11.5, 159, 'RIVER DISTRICT'], [11.5, 185, 'NORTH RIDGE']]) {
+  cylinder('Street sign post', x, 1.6, z, 0.045, 0.055, 3.2, mats.metal, 7);
+  sign(label, x, 3.15, z, x < 0 ? Math.PI / 2 : -Math.PI / 2);
+}
+// Forest and city edges are bounded so the walkable district has a clear footprint.
+box('City boundary west', -85, 5, 108, 1, 10, 168, mats.bark);
+box('City boundary east', 85, 5, 108, 1, 10, 168, mats.bark);
+box('City boundary north', 0, 5, 190, 170, 10, 1, mats.bark);
+box('World boundary south', 0, 5, -48, 186, 10, 1, mats.bark);
+box('World boundary west', -93, 5, -2, 1, 10, 92, mats.bark);
+box('World boundary east', 93, 5, -2, 1, 10, 92, mats.bark);
 
 // Manually authored interior footprint; wall breaks are explicit door openings.
 roomShell('Entry checkpoint', 0, -5.4, 9, 13.2, [{ side: 'north', width: 2.5 }, { side: 'south', width: 2.5 }, { side: 'east', width: 1.8 }]);
@@ -282,7 +633,7 @@ for (const [x, y, z, length, rot] of [[-0.38, 2.18, -0.03, 0.66, -0.82], [0.39, 
 stalker.position.set(0.4, 0, -21.5); stalker.visible = false; scene.add(stalker);
 const enemy = { state: 'dormant', patrolIndex: 0, path: [new THREE.Vector3(0, 0, -20.5), new THREE.Vector3(-2.5, 0, -24), new THREE.Vector3(1.5, 0, -26.2), new THREE.Vector3(0, 0, -18.8)], lastKnown: new THREE.Vector3(), attackCooldown: 0, alert: 0 };
 
-const player = { position: new THREE.Vector3(0, 0, 5.2), yaw: 0, pitch: 0, health: 100, battery: 100, hasKey: false, hasNote: false, hasPower: false, objective: 'Find a way into the facility', crouching: false, running: false, hidden: false, alive: true, flashlightOn: true, inventory: [], discovered: false };
+const player = { position: new THREE.Vector3(0, 0, 116), yaw: 0, pitch: 0, health: 100, battery: 100, hasKey: false, hasNote: false, hasPower: false, objective: 'Follow the emergency signal toward the research facility', crouching: false, running: false, hidden: false, alive: true, flashlightOn: true, inventory: [], discovered: false, cityCleared: false };
 const flashlight = new THREE.SpotLight(0xd7e4df, 38, 22, Math.PI / 7, 0.52, 1.4);
 flashlight.position.set(0, 1.62, 0); flashlight.target.position.set(0, 1.4, -3); scene.add(flashlight, flashlight.target);
 const clock = new THREE.Clock();
@@ -356,7 +707,7 @@ function playTone(frequency, duration = 0.2, type = 'sine', volume = 0.07) {
 function playThunder() { playTone(42, 1.8, 'sawtooth', 0.13); playTone(59, 1.2, 'triangle', 0.06); }
 
 function savedState() {
-  return { version: 1, position: player.position.toArray(), yaw: player.yaw, health: player.health, battery: player.battery, hasKey: player.hasKey, hasNote: player.hasNote, hasPower: player.hasPower, objective: player.objective, inventory: player.inventory, doors: [...doors].filter(([, d]) => d.open).map(([id]) => id), pickups: interactables.filter((i) => i.taken).map((i) => i.id), enemyState: enemy.state };
+  return { version: 1, position: player.position.toArray(), yaw: player.yaw, health: player.health, battery: player.battery, hasKey: player.hasKey, hasNote: player.hasNote, hasPower: player.hasPower, objective: player.objective, inventory: player.inventory, cityCleared: player.cityCleared, doors: [...doors].filter(([, d]) => d.open).map(([id]) => id), pickups: interactables.filter((i) => i.taken).map((i) => i.id), enemyState: enemy.state };
 }
 function saveGame(showToast = true) {
   try { localStorage.setItem('black-rain-save', JSON.stringify(savedState())); if (showToast) toast('Checkpoint saved. Progress secured.'); return true; }
@@ -371,6 +722,7 @@ function loadGame() {
   player.battery = THREE.MathUtils.clamp(Number(data.battery) || 0, 0, 100);
   player.hasKey = !!data.hasKey; player.hasNote = !!data.hasNote; player.hasPower = !!data.hasPower;
   player.inventory = Array.isArray(data.inventory) ? data.inventory.filter((v) => typeof v === 'string') : [];
+  player.cityCleared = !!data.cityCleared;
   const taken = new Set(Array.isArray(data.pickups) ? data.pickups : []);
   for (const item of interactables) if (taken.has(item.id)) { item.taken = true; if (item.mesh) item.mesh.visible = false; if (item.glow) item.glow.visible = false; }
   for (const id of Array.isArray(data.doors) ? data.doors : []) openDoor(doors.get(id), false);
@@ -382,10 +734,11 @@ function newGame() {
   try { localStorage.removeItem('black-rain-save'); } catch { /* Storage is optional. */ }
   for (const item of interactables) { item.taken = false; if (item.mesh) item.mesh.visible = true; if (item.glow) item.glow.visible = true; item.used = false; }
   for (const door of doors.values()) { door.open = false; door.pivot.rotation.y = door.rotation; if (!solids.includes(door.collider)) solids.push(door.collider); }
-  player.position.set(0, 0, 5.2); player.yaw = 0; player.pitch = 0; player.health = 100; player.battery = 100;
+  player.position.set(0, 0, 116); player.yaw = 0; player.pitch = 0; player.health = 100; player.battery = 100;
   player.hasKey = false; player.hasNote = false; player.hasPower = false; player.inventory = []; player.hidden = false; player.alive = true; player.flashlightOn = true; player.discovered = false;
+  player.cityCleared = false;
   enemy.state = 'dormant'; enemy.alert = 0; enemy.attackCooldown = 0; stalker.position.set(0.4, 0, -21.5); stalker.visible = false;
-  setObjective('Find a way into the facility'); updateHud();
+  setObjective('Follow the emergency signal toward the research facility'); updateHud();
 }
 function updateHud() {
   $('health-value').textContent = String(Math.ceil(player.health)); $('health-meter').style.width = `${player.health}%`;
@@ -406,6 +759,7 @@ function restorePower(save = true) {
 }
 function startGame(continueGame = false) {
   ensureAudio();
+  void requestLandscapeMode();
   if (!continueGame || !loadGame()) newGame();
   ui.start.classList.add('hidden'); ui.settings.classList.add('hidden'); ui.pause.classList.add('hidden'); ui.hud.classList.remove('hidden');
   gameState = 'playing'; player.alive = true;
@@ -414,6 +768,13 @@ function startGame(continueGame = false) {
 function showPause() { if (gameState !== 'playing') return; gameState = 'paused'; setScreen(ui.pause); document.exitPointerLock?.(); }
 function resumeGame() { if (gameState !== 'paused') return; setScreen(null); gameState = 'playing'; if (!isTouchDevice()) $('world').requestPointerLock?.(); }
 function isTouchDevice() { return matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0; }
+async function requestLandscapeMode() {
+  if (!isTouchDevice()) return;
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+  } catch { /* Fullscreen is optional; the responsive layout still supports manual rotation. */ }
+  try { await screen.orientation?.lock?.('landscape'); } catch { /* iOS and some browsers only allow manual rotation. */ }
+}
 function takeDamage(amount) {
   if (!player.alive || player.hidden) return;
   player.health = Math.max(0, player.health - amount); updateHud(); attackFlash = 0.28; playTone(72, 0.35, 'sawtooth', 0.14);
@@ -513,6 +874,12 @@ function updatePlayer(dt) {
     enemy.alert = Math.max(enemy.alert, player.running ? 5.2 : 1.6);
     if (enemy.state === 'dormant' && player.position.z < -13.5) { enemy.state = 'patrol'; stalker.visible = true; toast('A distant shape moves behind the observation glass.', 4); }
   }
+  if (player.position.z < 28 && !player.cityCleared) {
+    player.cityCleared = true;
+    setObjective('Follow the forest road to the research facility gate');
+    toast('The downtown grid falls behind. Follow the signal through the forest.');
+    saveGame(false);
+  }
   const eyeHeight = player.crouching ? 1.05 : 1.62;
   const bob = moving ? Math.sin(performance.now() * (player.running ? 0.016 : 0.011)) * (player.running ? 0.055 : 0.025) : 0;
   camera.position.set(player.position.x, eyeHeight + bob, player.position.z);
@@ -570,6 +937,19 @@ lookPad.addEventListener('pointermove', (event) => {
 });
 function releaseLook(event) { if (event.pointerId === lookPointer) { lookPointer = null; lastLook = null; } }
 lookPad.addEventListener('pointerup', releaseLook); lookPad.addEventListener('pointercancel', releaseLook);
+let canvasLookPointer = null, canvasLookPoint = null;
+$('world').addEventListener('pointerdown', (event) => {
+  if (gameState !== 'playing' || !isTouchDevice() || event.clientX < innerWidth * 0.38) return;
+  canvasLookPointer = event.pointerId; canvasLookPoint = [event.clientX, event.clientY]; $('world').setPointerCapture(event.pointerId);
+});
+$('world').addEventListener('pointermove', (event) => {
+  if (event.pointerId !== canvasLookPointer || !canvasLookPoint) return;
+  player.yaw -= (event.clientX - canvasLookPoint[0]) * 0.006 * sensitivity;
+  player.pitch = THREE.MathUtils.clamp(player.pitch - (event.clientY - canvasLookPoint[1]) * 0.005 * sensitivity, -1.45, 1.45);
+  canvasLookPoint = [event.clientX, event.clientY];
+});
+const releaseCanvasLook = (event) => { if (event.pointerId === canvasLookPointer) { canvasLookPointer = null; canvasLookPoint = null; } };
+$('world').addEventListener('pointerup', releaseCanvasLook); $('world').addEventListener('pointercancel', releaseCanvasLook);
 document.querySelectorAll('[data-action]').forEach((button) => {
   const action = button.dataset.action;
   button.addEventListener('pointerdown', (event) => { event.preventDefault(); button.classList.add('active'); if (action === 'run') moveInput.run = true; if (action === 'crouch') moveInput.crouch = true; if (action === 'flashlight') player.flashlightOn = !player.flashlightOn && player.battery > 0; if (action === 'interact') interact(player.hidden ? hiding : currentTarget); });
