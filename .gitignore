@@ -1,6 +1,7 @@
-backend/data.json
-backend/data.json.tmp
-backend/github-private-key.pem
-.env
-AI_RESPONSE.txt
-*.log
+.godot/
+build/
+export.cfg
+*.translation
+android/.gradle/
+android/build/
+android/.cxx/

@@ -1,33 +1,29 @@
-# Neko Nightfall
+# PROJECT BLACK RAIN
 
-An original 3D survival-horror game built with Godot 4.5.1. Explore the dark mansion courtyard, conserve ammunition, defeat the infected, collect supplies, and reach the blue exit door.
+Prototipe survival horror first-person 3D untuk Godot 4.5.1, memakai renderer Compatibility agar sesuai sasaran desktop, web, dan Android.
 
-## Play the webview
+## Menjalankan
 
-After the `Deploy Godot Webview` workflow succeeds, play the browser build at:
+1. Buka folder proyek ini di Godot 4.5.1.
+2. Tekan **Run Project**.
+3. Pilih **New Game** di menu.
 
-https://urban199.github.io/game/
+Kontrol desktop: WASD, Shift untuk lari, Ctrl untuk jongkok, mouse untuk melihat, F untuk senter, E untuk interaksi/keluar dari tempat persembunyian, I untuk inventaris, M untuk peta, dan Esc untuk jeda.
 
-If Pages is not enabled yet, open **Settings → Pages** and choose **GitHub Actions** as the source once. Future pushes to `main` deploy automatically.
+Kontrol layar sentuh dibuat saat game berjalan pada Android: joystick gerak virtual, lari, jongkok, interaksi, dan senter. Geser layar untuk melihat.
 
-## Controls
+## Alur prototipe
 
-- WASD: move
-- Shift: sprint
-- Mouse: aim
-- Left click: fire
-- R: reload / restart after win or death
-- F: flashlight
-- Space: jump
-- Escape: release/capture mouse
+Ambil kartu akses di area masuk, buka pintu layanan, cari terminal dan catatan penelitian, aktifkan generator di ruang servis, lalu buka pintu keluar. Monster berpatroli, mendengar suara langkah/lari, menyelidiki, mengejar, menyerang, dan mencari kembali setelah kehilangan jejak.
 
-This is an original survival-horror project and does not use Resident Evil characters, names, story, or assets.
+Progres disimpan pada checkpoint yang dapat digunakan kembali dan saat perubahan objektif penting ke `user://game_state.json`. Pengaturan kontrol, audio, grafis, dan hujan disimpan terpisah ke `user://player_settings.json`.
 
-## Mobile and Android preview
+Status implementasi dan pekerjaan tersisa tercatat di [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
-The game is configured for sensor landscape (orientation=4) and includes touch buttons for movement, flashlight, reload, and fire. Desktop controls remain WASD, mouse, F, R, and left click. Preview the Pages build at https://urban199.github.io/game/; add a query such as ?v=mobile-landscape after a deployment to bypass an old browser cache.
+## Ekspor
 
-Android export is intentionally not run yet: first validate the Web preview, then use the existing Android workflow/export preset on a machine with the Android SDK configured.
+Preset Web, Windows Desktop, dan Android APK tersedia di `export_presets.cfg`. Ekspor Android memerlukan export templates Godot, Android SDK, JDK, dan pengaturan signing untuk rilis.
 
+Workflow `.github/workflows/export.yml` hanya berjalan lewat **Actions → Validate and export → Run workflow**. Workflow tidak berjalan otomatis ketika commit atau push. Web dan Windows dapat dipilih; Android tetap diekspor dari mesin yang sudah dikonfigurasi dengan Android SDK.
 
-The current map is a larger city district with an open central road, perimeter buildings, alleys, an exit gate, and procedural placeholder architecture. Upload optional character/environment assets into assets/characters and assets/environment manually.
+Folder `build/` hanya menjadi lokasi keluaran ekspor dan tidak berisi build yang dibuat dalam perubahan ini.
