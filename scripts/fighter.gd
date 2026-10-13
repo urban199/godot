@@ -2,6 +2,7 @@ extends CharacterBody2D
 class_name ArenaFighter
 
 signal damaged(amount: float)
+signal skill_used(fighter_name: String, skill_name: String, team: int)
 const Projectile = preload("res://scripts/projectile.gd")
 const HitboxScript = preload("res://scripts/combat/hitbox.gd")
 const HurtboxScript = preload("res://scripts/combat/hurtbox.gd")
@@ -19,11 +20,14 @@ var opponent
 var attack_timer := 0.0
 var skill_timer := 0.0
 var rising_strike_timer := 0.0
+var skill_animation_timer := 0.0
 var dash_timer := 0.0
 var hit_flash := 0.0
 var attack_frame := 0.0
 var hitbox_active_time := 0.0
 var attack_hit_done := false
+var run_cycle_phase := 0.0
+var landing_squash := 0.0
 var combo_step := 0
 var current_combo_step := 0
 var combo_window := 0.0
@@ -42,7 +46,7 @@ var hurtbox: ArenaHurtbox
 
 const ANIMATION_CELLS := {
     "idle": [Vector2i(0, 0)],
-    "run": [Vector2i(0, 0), Vector2i(1, 0)],
+    "run": [Vector2i(1, 0)],
     "jump": [Vector2i(2, 0)],
     "guard": [Vector2i(3, 0)],
     "attack": [Vector2i(0, 1), Vector2i(1, 1)],
@@ -90,8 +94,10 @@ func _create_sprite_frames(atlas: Texture2D) -> SpriteFrames:
             frames.add_frame(animation_name, atlas_frame)
     return frames
 func _physics_process(delta):
+    var was_on_floor := is_on_floor()
     attack_timer=maxf(0,attack_timer-delta); skill_timer=maxf(0,skill_timer-delta)
     rising_strike_timer=maxf(0,rising_strike_timer-delta); combo_window=maxf(0,combo_window-delta)
+    skill_animation_timer=maxf(0.0,skill_animation_timer-delta)
     hitbox_active_time=maxf(0.0,hitbox_active_time-delta)
     dash_timer=maxf(0,dash_timer-delta); hit_flash=maxf(0,hit_flash-delta); attack_frame=maxf(0,attack_frame-delta)
     energy=minf(100,energy+8*delta)
@@ -110,11 +116,16 @@ func _physics_process(delta):
         combo_step = 0
         combo_queued = false
     if absf(knockback)>1: velocity.x=knockback; knockback=move_toward(knockback,0,900*delta)
-    elif dash_timer<=0 and attack_frame<=0: velocity.x=move_toward(velocity.x,0,move_speed*7*delta)
+    elif dash_timer<=0 and (attack_frame<=0 or skill_animation_timer>0.0): velocity.x=move_toward(velocity.x,0,move_speed*7*delta)
     move_and_slide()
     global_position.x=clampf(global_position.x,arena_left,arena_right)
     if global_position.y>=535: global_position.y=535
-    _refresh_visual()
+    if not was_on_floor and is_on_floor():
+        landing_squash = 1.0
+    landing_squash = move_toward(landing_squash, 0.0, delta * 5.5)
+    var run_amount := clampf(absf(velocity.x) / maxf(1.0, move_speed), 0.0, 1.25)
+    run_cycle_phase = fposmod(run_cycle_phase + delta * TAU * 7.0 * run_amount, TAU)
+    _refresh_visual(delta)
     queue_redraw()
 func _controls():
     if is_ai or not combat_enabled or health<=0:
@@ -125,7 +136,9 @@ func _controls():
         velocity.x=move_toward(velocity.x,0,move_speed*7*get_physics_process_delta_time())
         return
     var d=Input.get_axis("move_left","move_right")
-    if dash_timer<=0 and attack_frame<=0 and absf(d)>.1: velocity.x=d*move_speed*float(GameSession.settings.control_sensitivity); action_state="run"
+    if dash_timer<=0 and (attack_frame<=0 or skill_animation_timer>0.0) and absf(d)>.1:
+        velocity.x=d*move_speed*float(GameSession.settings.control_sensitivity)
+        if skill_animation_timer <= 0.0: action_state="run"
     elif is_on_floor() and attack_frame<=0: action_state="idle"
     if Input.is_action_just_pressed("jump") and is_on_floor(): velocity.y=-560; action_state="jump"
     if Input.is_action_just_pressed("attack"):
@@ -168,7 +181,8 @@ func _apply_melee_hit():
 
 func cast_skill():
     if skill_timer>0 or energy<28 or health<=0 or not combat_enabled:return
-    energy-=28; skill_timer=1.1; action_state="skill"; attack_frame=.42
+    energy-=28; skill_timer=1.1; action_state="skill"; attack_frame=.42; skill_animation_timer=.42
+    skill_used.emit(character_name, "Energy Bolt", team)
     var p=Projectile.new(); p.direction=facing; p.team=team; p.global_position=global_position+Vector2(facing*45,-65)
     get_tree().current_scene.add_child(p)
 
@@ -179,6 +193,8 @@ func cast_rising_strike():
     rising_strike_timer = 2.4
     action_state = "skill"
     attack_frame = 0.34
+    skill_animation_timer = 0.34
+    skill_used.emit(character_name, "Rising Strike", team)
     velocity.y = -360.0
     attack_hit_done = true
     attack_hitbox.activate(team, attack_power * 1.8, Vector2(facing * 150, -420), Vector2(facing * 18, -112), Vector2(92, 124))
@@ -198,7 +214,7 @@ func set_combat_enabled(enabled: bool):
     if not enabled:
         velocity=Vector2.ZERO
 
-func _refresh_visual():
+func _refresh_visual(delta: float):
     if not is_instance_valid(animated_sprite):
         return
     animated_sprite.flip_h = facing < 0
@@ -227,6 +243,32 @@ func _refresh_visual():
         animated_sprite.play(target_animation)
     elif target_animation != "ko" and not animated_sprite.is_playing():
         animated_sprite.play(target_animation)
+
+    var target_position := Vector2(0.0, -70.0)
+    var target_scale := Vector2(0.28, 0.28)
+    var target_rotation := 0.0
+    if target_animation == "run":
+        var step_bob := sin(run_cycle_phase * 2.0)
+        target_position.y += absf(step_bob) * -2.4
+        target_scale.x *= 1.0 + step_bob * 0.018
+        target_scale.y *= 1.0 - step_bob * 0.018
+        target_rotation = clampf(velocity.x / maxf(1.0, move_speed), -1.0, 1.0) * -0.035
+    elif target_animation == "jump":
+        var rising := velocity.y < 0.0
+        target_position.y += -2.0 if rising else 1.5
+        target_scale.x *= 0.97 if rising else 1.025
+        target_scale.y *= 1.04 if rising else 0.975
+        target_rotation = clampf(velocity.x / maxf(1.0, move_speed), -1.0, 1.0) * -0.025
+    if landing_squash > 0.0 and is_on_floor():
+        var squash := landing_squash * 0.055
+        target_position.y += landing_squash * 1.5
+        target_scale.x *= 1.0 + squash
+        target_scale.y *= 1.0 - squash
+
+    var blend := 1.0 - exp(-delta * 14.0)
+    animated_sprite.position = animated_sprite.position.lerp(target_position, blend)
+    animated_sprite.scale = animated_sprite.scale.lerp(target_scale, blend)
+    animated_sprite.rotation = lerp_angle(animated_sprite.rotation, target_rotation, blend)
 
 func _draw():
     if is_instance_valid(animated_sprite):

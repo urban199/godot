@@ -3,6 +3,7 @@ extends Node2D
 const Fighter = preload("res://scripts/fighter.gd")
 const Rival = preload("res://scripts/enemy.gd")
 const HUD = preload("res://scripts/hud.gd")
+const ArenaPreviewScript = preload("res://scripts/arena_preview.gd")
 const ROUND_SECONDS := 99.0
 
 var player: ArenaFighter
@@ -23,6 +24,13 @@ var match_time := ROUND_SECONDS
 var match_elapsed := 0.0
 var match_finished := false
 var elapsed := 0.0
+var player_character_preview: TextureRect
+var rival_character_preview: TextureRect
+var player_character_info: Label
+var rival_character_info: Label
+var character_choice_buttons: Array[Button] = []
+var arena_choice_buttons: Array[Button] = []
+var arena_choice_status_labels: Array[Label] = []
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -174,6 +182,73 @@ func _label(parent: Node, text: String, size: int = 16, centered: bool = false) 
 	parent.add_child(label)
 	return label
 
+func _label_at(parent: Control, text: String, position: Vector2, label_size: Vector2, font_size: int = 16, color: Color = Color("#d5e4f5"), centered: bool = false) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.position = position
+	label.size = label_size
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", color)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if centered else HORIZONTAL_ALIGNMENT_LEFT
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(label)
+	return label
+
+func _surface_at(parent: Control, rect: Rect2, background: Color = Color(0.035, 0.065, 0.12, 0.93), border: Color = Color("#55708d")) -> PanelContainer:
+	var surface := PanelContainer.new()
+	surface.position = rect.position
+	surface.size = rect.size
+	var style := _panel_style()
+	style.bg_color = background
+	style.border_color = border
+	style.set_border_width_all(2)
+	surface.add_theme_stylebox_override("panel", style)
+	parent.add_child(surface)
+	return surface
+
+func _portrait_at(parent: Control, character: Dictionary, rect: Rect2) -> TextureRect:
+	var portrait := TextureRect.new()
+	portrait.position = rect.position
+	portrait.size = rect.size
+	portrait.texture = _atlas_frame(character.sprite_path, Vector2i(0, 0))
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(portrait)
+	return portrait
+
+func _button_at(parent: Control, caption: String, rect: Rect2, callback: Callable, accent: Color = Color("#254765"), selected: bool = false) -> Button:
+	var button := Button.new()
+	button.position = rect.position
+	button.size = rect.size
+	button.text = caption
+	button.focus_mode = Control.FOCUS_ALL
+	button.add_theme_font_size_override("font_size", 16)
+	button.add_theme_color_override("font_color", Color("#eef7ff"))
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_stylebox_override("normal", _choice_style(accent, selected))
+	button.add_theme_stylebox_override("hover", _choice_style(accent.lightened(0.14), true))
+	button.add_theme_stylebox_override("pressed", _choice_style(accent.lightened(0.22), true))
+	button.add_theme_stylebox_override("focus", _choice_style(accent, true))
+	button.pressed.connect(callback)
+	parent.add_child(button)
+	return button
+
+func _choice_style(color: Color, emphasized: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = color if emphasized else color.darkened(0.45)
+	style.border_color = color.lightened(0.28) if emphasized else color.darkened(0.12)
+	style.set_border_width_all(2 if emphasized else 1)
+	style.set_corner_radius_all(9)
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	return style
+
 func _button(parent: Node, caption: String, callback: Callable, minimum: Vector2 = Vector2(0, 48)) -> Button:
 	var button := Button.new()
 	button.text = caption
@@ -188,14 +263,37 @@ func _button(parent: Node, caption: String, callback: Callable, minimum: Vector2
 func _show_home() -> void:
 	screen = "home"
 	var root := _new_ui()
-	var column := _panel(root, "SHINOBI ARENA", "Original 2D fighter • Choose a path to begin")
-	_button(column, "Play", _show_mode_select)
-	_button(column, "Practice", _start_practice)
-	_button(column, "Collection", _show_collection)
-	_button(column, "Settings", _show_settings)
-	_button(column, "Credits", _show_credits)
+	var menu_panel := _surface_at(root, Rect2(58, 278, 438, 380), Color(0.025, 0.045, 0.085, 0.93), Color("#4c7894"))
+	_label_at(root, "SHINOBI", Vector2(82, 96), Vector2(390, 72), 48, Color("#f0f7ff"))
+	_label_at(root, "ARENA  /  THE WAY OF THE WARRIOR", Vector2(86, 164), Vector2(390, 30), 15, Color("#72d5ee"))
+	_label_at(root, "Three fighters. Three arenas.\nChoose your path.", Vector2(86, 201), Vector2(360, 58), 19, Color("#c7d7e8"))
+	var menu_margin := MarginContainer.new()
+	menu_margin.add_theme_constant_override("margin_left", 18)
+	menu_margin.add_theme_constant_override("margin_right", 18)
+	menu_margin.add_theme_constant_override("margin_top", 18)
+	menu_margin.add_theme_constant_override("margin_bottom", 18)
+	menu_panel.add_child(menu_margin)
+	var actions := VBoxContainer.new()
+	actions.add_theme_constant_override("separation", 9)
+	menu_margin.add_child(actions)
+	_button(actions, "QUICK BATTLE", _show_mode_select, Vector2(0, 52))
+	_button(actions, "PRACTICE DOJO", _start_practice, Vector2(0, 52))
+	_button(actions, "COLLECTION", _show_collection, Vector2(0, 48))
+	_button(actions, "SETTINGS", _show_settings, Vector2(0, 48))
+	_button(actions, "CREDITS", _show_credits, Vector2(0, 48))
 	if not OS.has_feature("web"):
-		_button(column, "Quit", _quit_game)
+		_button(actions, "QUIT", _quit_game, Vector2(0, 44))
+	var kairo: Dictionary = GameSession.character_by_id("kairo")
+	var daigo: Dictionary = GameSession.character_by_id("daigo")
+	_surface_at(root, Rect2(610, 120, 285, 510), Color(0.04, 0.08, 0.14, 0.58), Color("#33728a"))
+	_surface_at(root, Rect2(930, 120, 285, 510), Color(0.08, 0.055, 0.09, 0.58), Color("#98634f"))
+	_portrait_at(root, kairo, Rect2(615, 157, 275, 365))
+	_portrait_at(root, daigo, Rect2(935, 157, 275, 365))
+	_label_at(root, "01  /  KAIRO", Vector2(632, 534), Vector2(240, 32), 18, Color("#81def4"), true)
+	_label_at(root, "BALANCED  |  BLADE OF THE NORTH", Vector2(622, 570), Vector2(260, 28), 11, Color("#b8c9dc"), true)
+	_label_at(root, "03  /  DAIGO", Vector2(952, 534), Vector2(240, 32), 18, Color("#ffbd7f"), true)
+	_label_at(root, "HEAVY  |  IRON GUARD", Vector2(942, 570), Vector2(260, 28), 11, Color("#dbc8bd"), true)
+	_label_at(root, "SELECT YOUR FIGHTER  |  NEXT", Vector2(693, 54), Vector2(500, 32), 13, Color("#c0d5e6"), true)
 
 func _show_mode_select() -> void:
 	screen = "mode"
@@ -220,77 +318,79 @@ func _show_character_select() -> void:
 	screen = "character"
 	selected_character_id = GameSession.player_character_id
 	selected_opponent_id = GameSession.opponent_character_id
-	var column := _panel(_new_ui(), "CHOOSE YOUR SHINOBI", "Select a fighter. Character data and stats are stored by ID.")
-	var cards := HBoxContainer.new()
-	cards.add_theme_constant_override("separation", 8)
-	column.add_child(cards)
-	for character in GameSession.CHARACTER_DATA:
-		var card := Button.new()
-		card.custom_minimum_size = Vector2(195, 108)
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.text = "%s\n%s\nHP %d  •  Speed %d\nPower %d" % [character.name, character.role, int(character.hp), int(character.speed), int(character.power)]
-		card.icon = _atlas_frame(character.sprite_path, Vector2i(0, 0))
-		card.expand_icon = true
-		card.focus_mode = Control.FOCUS_ALL
-		card.pressed.connect(_select_character.bind(character.id))
-		cards.add_child(card)
-	_label(column, "Choose AI opponent", 14, true)
-	var opponent_cards := HBoxContainer.new()
-	opponent_cards.add_theme_constant_override("separation", 8)
-	column.add_child(opponent_cards)
-	for character in GameSession.CHARACTER_DATA:
-		var card := Button.new()
-		card.custom_minimum_size = Vector2(195, 54)
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.text = "AI: %s" % character.name
-		card.pressed.connect(_select_opponent.bind(character.id))
-		opponent_cards.add_child(card)
-	var preview_row := HBoxContainer.new()
-	preview_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	preview_row.add_theme_constant_override("separation", 16)
-	column.add_child(preview_row)
-	var preview := TextureRect.new()
-	preview.name = "CharacterPreview"
-	preview.custom_minimum_size = Vector2(96, 116)
-	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	preview_row.add_child(preview)
-	var description := _label(preview_row, "", 15, false)
-	description.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	description.name = "CharacterDescription"
-	_update_character_preview(preview)
-	_update_character_description(description)
-	_button(column, "Confirm Character", _confirm_character)
-	_button(column, "Back", _go_back)
+	var root := _new_ui()
+	var player_data: Dictionary = GameSession.character_by_id(selected_character_id)
+	var rival_data: Dictionary = GameSession.character_by_id(selected_opponent_id)
+	_surface_at(root, Rect2(24, 133, 310, 512), Color(0.025, 0.065, 0.105, 0.88), player_data.accent)
+	_surface_at(root, Rect2(946, 133, 310, 512), Color(0.09, 0.045, 0.055, 0.88), rival_data.accent)
+	_surface_at(root, Rect2(352, 133, 576, 512), Color(0.035, 0.05, 0.09, 0.95), Color("#6b91aa"))
+	_label_at(root, "CHOOSE YOUR SHINOBI", Vector2(352, 45), Vector2(576, 48), 30, Color("#f2f7ff"), true)
+	_label_at(root, "PLAYER 01", Vector2(44, 147), Vector2(270, 26), 13, Color("#83def3"), true)
+	_label_at(root, "RIVAL", Vector2(966, 147), Vector2(270, 26), 13, Color("#ffb781"), true)
+	player_character_preview = _portrait_at(root, player_data, Rect2(35, 176, 288, 338))
+	rival_character_preview = _portrait_at(root, rival_data, Rect2(957, 176, 288, 338))
+	player_character_info = _label_at(root, "", Vector2(42, 515), Vector2(274, 110), 14, Color("#d4e5f2"), true)
+	rival_character_info = _label_at(root, "", Vector2(964, 515), Vector2(274, 110), 14, Color("#ead9d0"), true)
+	_label_at(root, "SELECT FIGHTER", Vector2(392, 151), Vector2(496, 34), 22, Color("#e7f3ff"), true)
+	_label_at(root, "Your chosen shinobi appears on the left.", Vector2(392, 184), Vector2(496, 26), 13, Color("#9fb6c9"), true)
+	character_choice_buttons.clear()
+	for index in range(GameSession.CHARACTER_DATA.size()):
+		var character: Dictionary = GameSession.CHARACTER_DATA[index]
+		var caption := "%02d     %s     HP %d    SPD %d    POW %d" % [index + 1, character.name.to_upper(), int(character.hp), int(character.speed), int(character.power)]
+		var choice := _button_at(root, caption, Rect2(397, 220 + index * 68, 486, 58), _select_character.bind(character.id), character.accent, character.id == selected_character_id)
+		choice.add_theme_font_size_override("font_size", 14)
+		choice.set_meta("character_id", character.id)
+		character_choice_buttons.append(choice)
+	_label_at(root, "RIVAL SELECT", Vector2(397, 434), Vector2(486, 29), 14, Color("#f1bf9b"), true)
+	_button_at(root, "<", Rect2(410, 478, 58, 46), _cycle_opponent.bind(-1), Color("#bf7656"))
+	var rival_choice_name := _label_at(root, "", Vector2(475, 478), Vector2(330, 46), 16, Color("#f3e0d2"), true)
+	rival_choice_name.name = "RivalChoiceName"
+	_button_at(root, ">", Rect2(812, 478, 58, 46), _cycle_opponent.bind(1), Color("#bf7656"))
+	_button_at(root, "BACK", Rect2(410, 563, 205, 50), _go_back, Color("#426378"))
+	_button_at(root, "CONTINUE  >", Rect2(635, 563, 235, 50), _confirm_character, Color("#19809a"), true)
+	_refresh_character_select()
 
 func _select_character(character_id: String) -> void:
 	selected_character_id = character_id
-	var description := ui_layer.find_child("CharacterDescription", true, false) as Label
-	var preview := ui_layer.find_child("CharacterPreview", true, false) as TextureRect
-	if is_instance_valid(description):
-		_update_character_description(description)
-	if is_instance_valid(preview):
-		_update_character_preview(preview)
+	_refresh_character_select()
 
 func _select_opponent(character_id: String) -> void:
 	selected_opponent_id = character_id
-	var description := ui_layer.find_child("CharacterDescription", true, false) as Label
-	if is_instance_valid(description):
-		_update_character_description(description)
+	_refresh_character_select()
+
+func _cycle_opponent(direction: int) -> void:
+	var current_index := 0
+	for index in range(GameSession.CHARACTER_DATA.size()):
+		if GameSession.CHARACTER_DATA[index].id == selected_opponent_id:
+			current_index = index
+			break
+	var next_index := (current_index + direction + GameSession.CHARACTER_DATA.size()) % GameSession.CHARACTER_DATA.size()
+	_select_opponent(GameSession.CHARACTER_DATA[next_index].id)
+
+func _refresh_character_select() -> void:
+	if not is_instance_valid(player_character_preview) or not is_instance_valid(rival_character_preview):
+		return
+	var player_data: Dictionary = GameSession.character_by_id(selected_character_id)
+	var rival_data: Dictionary = GameSession.character_by_id(selected_opponent_id)
+	player_character_preview.texture = _atlas_frame(player_data.sprite_path, Vector2i(0, 0))
+	rival_character_preview.texture = _atlas_frame(rival_data.sprite_path, Vector2i(0, 0))
+	player_character_preview.modulate = player_data.accent.lightened(0.25)
+	rival_character_preview.modulate = rival_data.accent.lightened(0.25)
+	player_character_info.text = "%s\n%s\nHP %d   SPEED %d   POWER %d" % [player_data.name.to_upper(), player_data.role.to_upper(), int(player_data.hp), int(player_data.speed), int(player_data.power)]
+	rival_character_info.text = "%s\n%s\nHP %d   SPEED %d   POWER %d" % [rival_data.name.to_upper(), rival_data.role.to_upper(), int(rival_data.hp), int(rival_data.speed), int(rival_data.power)]
+	var rival_name := ui_layer.find_child("RivalChoiceName", true, false) as Label
+	if is_instance_valid(rival_name):
+		rival_name.text = "%s   |   %s" % [rival_data.name.to_upper(), rival_data.role.to_upper()]
+	for choice in character_choice_buttons:
+		var character_id: String = choice.get_meta("character_id")
+		var character: Dictionary = GameSession.character_by_id(character_id)
+		choice.add_theme_stylebox_override("normal", _choice_style(character.accent, character_id == selected_character_id))
 
 func _atlas_frame(atlas_path: String, cell: Vector2i) -> AtlasTexture:
 	var frame := AtlasTexture.new()
 	frame.atlas = load(atlas_path) as Texture2D
 	frame.region = Rect2(cell.x * 384, cell.y * 512, 384, 512)
 	return frame
-
-func _update_character_preview(preview: TextureRect) -> void:
-	var character: Dictionary = GameSession.character_by_id(selected_character_id)
-	preview.texture = _atlas_frame(character.sprite_path, Vector2i(0, 0))
-
-func _update_character_description(label: Label) -> void:
-	var character: Dictionary = GameSession.character_by_id(selected_character_id)
-	label.text = "%s — %s\n%s\nAI opponent: %s   •   Skills: Energy Bolt, Rising Strike" % [character.name, character.role, character.description, GameSession.character_by_id(selected_opponent_id).name]
 
 func _confirm_character() -> void:
 	GameSession.player_character_id = selected_character_id
@@ -300,15 +400,45 @@ func _confirm_character() -> void:
 func _show_arena_select() -> void:
 	screen = "arena"
 	selected_arena_id = GameSession.selected_arena_id
-	var column := _panel(_new_ui(), "CHOOSE AN ARENA", "Select the setting for your battle")
-	for arena in GameSession.ARENA_DATA:
-		var button := _button(column, "%s\n%s" % [arena.name, arena.description], _select_arena.bind(arena.id), Vector2(0, 60))
-		button.add_theme_font_size_override("font_size", 15)
-	var summary := _label(column, "Fighter: %s" % GameSession.character_by_id(GameSession.player_character_id).name, 16, true)
+	var root := _new_ui()
+	_label_at(root, "CHOOSE YOUR BATTLEFIELD", Vector2(250, 28), Vector2(780, 48), 30, Color("#f0f7ff"), true)
+	_label_at(root, "Each arena has its own terrain, light, and mood.", Vector2(320, 75), Vector2(640, 30), 15, Color("#a9bfd2"), true)
+	arena_choice_buttons.clear()
+	arena_choice_status_labels.clear()
+	for index in range(GameSession.ARENA_DATA.size()):
+		var arena: Dictionary = GameSession.ARENA_DATA[index]
+		var card_position := Vector2(72 + index * 380, 125)
+		var card := Button.new()
+		card.position = card_position
+		card.size = Vector2(352, 438)
+		card.text = ""
+		card.toggle_mode = true
+		card.button_pressed = arena.id == selected_arena_id
+		card.focus_mode = Control.FOCUS_ALL
+		card.add_theme_stylebox_override("normal", _choice_style(arena.accent, arena.id == selected_arena_id))
+		card.add_theme_stylebox_override("hover", _choice_style(arena.accent.lightened(0.16), true))
+		card.add_theme_stylebox_override("pressed", _choice_style(arena.accent.lightened(0.2), true))
+		card.pressed.connect(_select_arena.bind(arena.id))
+		root.add_child(card)
+		var preview: ArenaPreview = ArenaPreviewScript.new()
+		preview.arena_id = arena.id
+		preview.position = Vector2(12, 12)
+		preview.size = Vector2(328, 202)
+		preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(preview)
+		var number_label := _label_at(card, "%02d  /  ARENA" % (index + 1), Vector2(18, 224), Vector2(316, 24), 12, arena.accent.lightened(0.35))
+		var name_label := _label_at(card, arena.name.to_upper(), Vector2(18, 251), Vector2(316, 37), 21, Color("#f2f6ff"))
+		var description_label := _label_at(card, arena.description, Vector2(18, 292), Vector2(316, 56), 14, Color("#c2cfdd"))
+		var card_status := _label_at(card, "SELECTED" if arena.id == selected_arena_id else "TAP TO SELECT", Vector2(18, 378), Vector2(316, 28), 12, arena.accent.lightened(0.45), true)
+		for child_label in [number_label, name_label, description_label, card_status]:
+			child_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		arena_choice_buttons.append(card)
+		arena_choice_status_labels.append(card_status)
+	var summary := _label_at(root, "", Vector2(250, 572), Vector2(780, 30), 15, Color("#dce8f2"), true)
 	summary.name = "ArenaSelectionSummary"
-	_button(column, "Random Arena", _random_arena)
-	_button(column, "Start Battle", _start_battle)
-	_button(column, "Back", _go_back)
+	_button_at(root, "RANDOM ARENA", Rect2(340, 620, 190, 48), _random_arena, Color("#425b6b"))
+	_button_at(root, "START BATTLE  >", Rect2(545, 620, 230, 48), _start_battle, Color("#18819a"), true)
+	_button_at(root, "BACK", Rect2(790, 620, 150, 48), _go_back, Color("#425b6b"))
 	_update_arena_summary(summary)
 
 func _select_arena(arena_id: String) -> void:
@@ -316,10 +446,18 @@ func _select_arena(arena_id: String) -> void:
 	var summary := ui_layer.find_child("ArenaSelectionSummary", true, false) as Label
 	if is_instance_valid(summary):
 		_update_arena_summary(summary)
+	for index in range(arena_choice_buttons.size()):
+		var button := arena_choice_buttons[index]
+		var arena: Dictionary = GameSession.ARENA_DATA[index]
+		button.button_pressed = arena.id == selected_arena_id
+		button.add_theme_stylebox_override("normal", _choice_style(arena.accent, arena.id == selected_arena_id))
+		var status := arena_choice_status_labels[index]
+		status.text = "SELECTED" if arena.id == selected_arena_id else "TAP TO SELECT"
 
 func _update_arena_summary(label: Label) -> void:
 	var arena: Dictionary = GameSession.arena_by_id(selected_arena_id)
-	label.text = "Selected: %s   •   Fighter: %s" % [arena.name, GameSession.character_by_id(GameSession.player_character_id).name]
+	if is_instance_valid(label):
+		label.text = "SELECTED: %s    |    FIGHTER: %s" % [arena.name.to_upper(), GameSession.character_by_id(GameSession.player_character_id).name.to_upper()]
 
 func _random_arena() -> void:
 	var index := randi_range(0, GameSession.ARENA_DATA.size() - 1)
@@ -392,6 +530,8 @@ func _start_battle() -> void:
 	hud.player = player
 	hud.enemy = enemy
 	hud.pause_requested.connect(_pause_battle)
+	player.skill_used.connect(hud.show_skill_banner)
+	enemy.skill_used.connect(hud.show_skill_banner)
 	add_child(hud)
 	hud.set_match_info(GameSession.arena_by_id(selected_arena_id).name, player_data.name, opponent_data.name)
 
