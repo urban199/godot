@@ -41,10 +41,10 @@ jobs:
           export/android/debug_keystore_pass = "android"
           EOF
           keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-      - name: Export
+      - name: Export Android debug APK
         run: |
           mkdir -p build/android
-          godot-bin/Godot_v4.5.1-stable_linux.x86_64 --headless --path . --install-android-build-template --export-debug "Android" build/android/ShinobiArena.apk
+          godot-bin/Godot_v4.5.1-stable_linux.x86_64 --headless --verbose --path . --export-debug "Android" build/android/ShinobiArena.apk
       - uses: actions/upload-artifact@v4
         with:
           name: shinobi-arena-android
