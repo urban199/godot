@@ -1,44 +1,18 @@
-; Engine configuration file.
 config_version=5
-
 [application]
-config/name="PROJECT BLACK RAIN"
+config/name="Shinobi Arena 2D"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 
 [autoload]
-Objectives="*res://scripts/objectives/objectives.gd"
-Inventory="*res://scripts/player/inventory.gd"
-SettingsManager="*res://scripts/settings/settings_manager.gd"
-SaveSystem="*res://scripts/save/save_system.gd"
-AudioManager="*res://scripts/audio/audio_manager.gd"
-
+GameSession="*res://scripts/game_session.gd"
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="canvas_items"
-window/stretch/aspect="expand"
-
-[audio]
-default_bus_layout="res://default_bus_layout.tres"
-
-[input]
-move_forward={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":87),Object(InputEventKey,"physical_keycode":4194320)]}
-move_back={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":83),Object(InputEventKey,"physical_keycode":4194322)]}
-move_left={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":65),Object(InputEventKey,"physical_keycode":4194319)]}
-move_right={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":68),Object(InputEventKey,"physical_keycode":4194321)]}
-run={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":4194325)]}
-crouch={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":4194326)]}
-interact={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":69)]}
-flashlight={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":70)]}
-pause={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":4194305)]}
-map={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":77)]}
-inventory={"deadzone":0.2,"events":[Object(InputEventKey,"physical_keycode":73)]}
-
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-environment/defaults/default_clear_color=Color(0.015, 0.022, 0.028, 1)
-textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.035,0.045,0.08,1)

@@ -1,7 +1,0 @@
-.godot/
-build/
-export.cfg
-*.translation
-android/.gradle/
-android/build/
-android/.cxx/

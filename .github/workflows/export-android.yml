@@ -1,0 +1,27 @@
+name: Export Android
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Godot 4.5.1 and export templates
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.5.1-stable/Godot_v4.5.1-stable_linux.x86_64.zip -O godot.zip
+          unzip -q godot.zip -d godot-bin
+          chmod +x godot-bin/Godot_v4.5.1-stable_linux.x86_64
+          mkdir -p ~/.local/share/godot/export_templates/4.5.1.stable
+          wget -q https://github.com/godotengine/godot/releases/download/4.5.1-stable/Godot_v4.5.1-stable_export_templates.tpz -O templates.tpz
+          unzip -q templates.tpz -d templates
+          cp -r templates/templates/* ~/.local/share/godot/export_templates/4.5.1.stable/
+      - name: Export
+        run: |
+          mkdir -p build/android
+          godot-bin/Godot_v4.5.1-stable_linux.x86_64 --headless --path . --export-debug "Android" build/android/ShinobiArena.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shinobi-arena-android
+          path: build/android/
